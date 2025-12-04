@@ -1,0 +1,36 @@
+{
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.2",
+    "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.2",
+    "@nomicfoundation/hardhat-ignition": "^3.0.5",
+    "@nomicfoundation/hardhat-ignition-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-keystore": "^3.0.2",
+    "@nomicfoundation/hardhat-mocha": "^3.0.7",
+    "@nomicfoundation/hardhat-network-helpers": "^3.0.3",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.1",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.1",
+    "@nomicfoundation/hardhat-typechain": "^3.0.1",
+    "@nomicfoundation/hardhat-verify": "^3.0.7",
+    "@nomicfoundation/ignition-core": "^3.0.5",
+    "@types/chai": "^4.2.0",
+    "@types/chai-as-promised": "^8.0.1",
+    "@types/mocha": ">=10.0.10",
+    "@types/node": "^22.8.5",
+    "chai": "^5.1.2",
+    "ethers": "^6.14.0",
+    "forge-std": "foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.0.15",
+    "mocha": "^11.0.0",
+    "typescript": "~5.8.0",
+    "viem": "^2.40.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "dotenv": "^17.2.3",
+    "snarkjs": "^0.7.5",
+    "wasm2js": "^0.2.0"
+  }
+}

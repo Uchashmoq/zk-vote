@@ -1,0 +1,63 @@
+# Node modules
+/node_modules
+
+# Compilation output
+/dist
+
+# pnpm deploy output
+/bundle
+
+# Hardhat Build Artifacts
+/artifacts
+
+# Hardhat compilation (v2) support directory
+/cache
+
+# Typechain output
+/types
+
+# Hardhat coverage reports
+/coverage
+
+/ptau
+/github-reference
+
+
+
+
+#web
+# dependencies
+/web/node_modules
+/web/.pnp
+/web/.pnp.js
+
+# testing
+/web/coverage
+
+# next.js
+/web/.next/
+/web/out/
+
+# production
+/web/build
+
+# misc
+/web.DS_Store
+/web/*.pem
+
+# debug
+/web/npm-debug.log*
+/web/yarn-debug.log*
+/web/yarn-error.log*
+
+# local env files
+/web/.env*.local
+
+# vercel
+/web/.vercel
+
+# typescript
+/web/*.tsbuildinfo
+
+
+
