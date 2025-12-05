@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Eye, EyeOff, MoreHorizontal, Search, ShieldCheck } from 'lucide-react'
 import {
   useAccount,
   useChainId,
@@ -38,6 +39,94 @@ function shorten(addr?: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
 }
 
+function SearchBar(props: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative flex w-full min-w-[180px] max-w-lg items-center">
+      <input
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        placeholder="搜索投票关键词"
+        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
+      />
+      <Search className="pointer-events-none absolute right-3 h-4 w-4 text-slate-500" strokeWidth={2} />
+    </div>
+  )
+}
+
+function VerifiedToggle(props: { showVerified: boolean; setShowVerified: (v: boolean) => void }) {
+  const { showVerified, setShowVerified } = props
+  return (
+    <button
+      onClick={() => setShowVerified((v) => !v)}
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-100 transition hover:bg-white/10"
+      aria-pressed={showVerified}
+      aria-label={showVerified ? 'Hide verified polls' : 'Show verified polls'}
+      title={showVerified ? 'Hide verified polls' : 'Show verified polls'}
+    >
+      {showVerified ? (
+        <ShieldCheck className="h-5 w-5 text-emerald-300" strokeWidth={2.2} />
+      ) : (
+        <EyeOff className="h-5 w-5 text-slate-400" strokeWidth={2.2} />
+      )}
+    </button>
+  )
+}
+
+function RightActions(props: {
+  isConnected: boolean
+  isOnSepolia: boolean
+  chainName?: string
+  address?: string
+  switchPending: boolean
+  onSwitch: () => void
+  onDisconnect: () => void
+  connectStatus: ReturnType<typeof useConnect>['status']
+  orderedConnectors: ReturnType<typeof useConnectors>
+  isBrowser: boolean
+  menuOpen: boolean
+  onToggleMenu: () => void
+  onConnect: (uid: string) => void
+}) {
+  return (
+    <div className="relative flex items-center gap-3">
+      {props.isConnected && (
+        <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-200">
+          {props.isOnSepolia ? 'Sepolia' : props.chainName || 'Wrong network'} ·{' '}
+          {shorten(props.address)}
+        </div>
+      )}
+      {!props.isConnected ? (
+        <ConnectorMenu
+          orderedConnectors={props.orderedConnectors}
+          connectStatus={props.connectStatus}
+          isBrowser={props.isBrowser}
+          onConnect={props.onConnect}
+          open={props.menuOpen}
+          onToggle={props.onToggleMenu}
+        />
+      ) : (
+        <>
+          {!props.isOnSepolia && (
+            <button
+              onClick={props.onSwitch}
+              disabled={props.switchPending}
+              className="rounded-xl border border-amber-300/60 px-3 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {props.switchPending ? 'Switching…' : 'Switch to Sepolia'}
+            </button>
+          )}
+          <button
+            onClick={props.onDisconnect}
+            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
+          >
+            Disconnect
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function WalletNav() {
   const { address, status: accountStatus, chain } = useAccount()
   const activeChainId = useChainId()
@@ -46,6 +135,9 @@ export default function WalletNav() {
   const { connect, status: connectStatus } = useConnect()
   const { switchChainAsync, isPending: switchPending } = useSwitchChain()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [showVerified, setShowVerified] = useState(true)
   const isBrowser = typeof window !== 'undefined'
 
   const orderedConnectors = useMemo(() => {
@@ -80,41 +172,88 @@ export default function WalletNav() {
 
   return (
     <nav className="sticky top-0 z-10 border-b border-white/10 bg-slate-900/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Brand />
-        <div className="relative flex items-center gap-3">
-          {isConnected && (
-            <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-200">
-              {isOnSepolia ? 'Sepolia' : chain?.name || 'Wrong network'} · {shorten(address)}
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-6 py-4">
+        <div className="hidden sm:block">
+          <Brand />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <SearchBar value={search} onChange={setSearch} />
+          <div className="hidden sm:flex">
+            <VerifiedToggle showVerified={showVerified} setShowVerified={setShowVerified} />
+          </div>
+        </div>
+        <div className="hidden items-center gap-3 sm:flex">
+          <RightActions
+            isConnected={isConnected}
+            isOnSepolia={isOnSepolia}
+            chainName={chain?.name}
+            address={address}
+            switchPending={switchPending}
+            onSwitch={handleSwitch}
+            onDisconnect={disconnect}
+            connectStatus={connectStatus}
+            orderedConnectors={orderedConnectors}
+            isBrowser={isBrowser}
+            menuOpen={menuOpen}
+            onToggleMenu={() => setMenuOpen((v) => !v)}
+            onConnect={handleConnect}
+          />
+        </div>
+        <div className="ml-auto sm:hidden">
+          <button
+            onClick={() => setMobileActionsOpen((v) => !v)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-100 transition hover:bg-white/10"
+            aria-expanded={mobileActionsOpen}
+            aria-label="Open actions menu"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {mobileActionsOpen && (
+            <div className="absolute right-6 mt-2 w-64 rounded-xl border border-white/10 bg-slate-900/95 p-3 shadow-xl shadow-black/30">
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-200">
+                <span>{isOnSepolia ? 'Sepolia' : chain?.name || 'Wrong network'}</span>
+                {isConnected && <span className="font-mono">{shorten(address)}</span>}
+              </div>
+              <div className="mt-3">
+                <VerifiedToggle showVerified={showVerified} setShowVerified={setShowVerified} />
+              </div>
+              <div className="mt-3 flex flex-col gap-2">
+                {!isConnected ? (
+                  <ConnectorMenu
+                    orderedConnectors={orderedConnectors}
+                    connectStatus={connectStatus}
+                    isBrowser={isBrowser}
+                    onConnect={(uid) => {
+                      handleConnect(uid)
+                      setMobileActionsOpen(false)
+                    }}
+                    open={menuOpen}
+                    onToggle={() => setMenuOpen((v) => !v)}
+                  />
+                ) : (
+                  <>
+                    {!isOnSepolia && (
+                      <button
+                        onClick={handleSwitch}
+                        disabled={switchPending}
+                        className="w-full rounded-xl border border-amber-300/60 px-3 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {switchPending ? 'Switching…' : 'Switch to Sepolia'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        disconnect()
+                        setMobileActionsOpen(false)
+                      }}
+                      className="w-full rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
+                    >
+                      Disconnect
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          )}
-          {!isConnected ? (
-            <ConnectorMenu
-              orderedConnectors={orderedConnectors}
-              connectStatus={connectStatus}
-              isBrowser={isBrowser}
-              onConnect={handleConnect}
-              open={menuOpen}
-              onToggle={() => setMenuOpen((v) => !v)}
-            />
-          ) : (
-            <>
-              {!isOnSepolia && (
-                <button
-                  onClick={handleSwitch}
-                  disabled={switchPending}
-                  className="rounded-xl border border-amber-300/60 px-3 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {switchPending ? 'Switching…' : 'Switch to Sepolia'}
-                </button>
-              )}
-              <button
-                onClick={() => disconnect()}
-                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
-              >
-                Disconnect
-              </button>
-            </>
           )}
         </div>
       </div>
