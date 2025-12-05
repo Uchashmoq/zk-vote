@@ -9,6 +9,30 @@ import {
 } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
 
+function normalizeName(name: string) {
+  const lower = name.toLowerCase()
+  if (lower.includes('metamask')) return 'metamask'
+  if (lower.includes('phantom')) return 'phantom'
+  if (lower.includes('okx')) return 'okx'
+  if (lower.includes('injected')) return 'injected'
+  return lower
+}
+
+function prettyName(name: string) {
+  switch (name) {
+    case 'metamask':
+      return 'MetaMask'
+    case 'phantom':
+      return 'Phantom'
+    case 'okx':
+      return 'OKX Wallet'
+    case 'injected':
+      return 'Injected'
+    default:
+      return name
+  }
+}
+
 function shorten(addr?: string) {
   if (!addr) return ''
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
@@ -25,10 +49,17 @@ export default function WalletNav() {
   const isBrowser = typeof window !== 'undefined'
 
   const orderedConnectors = useMemo(() => {
-    const priority = ['metamask', 'phantom', 'okx', 'browser']
-    return [...connectors].sort((a, b) => {
-      const ia = priority.indexOf(a.name.toLowerCase())
-      const ib = priority.indexOf(b.name.toLowerCase())
+    const seen = new Set<string>()
+    const deduped = connectors.filter((c) => {
+      const key = normalizeName(c.name)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    const priority = ['metamask', 'phantom', 'okx', 'injected']
+    return deduped.sort((a, b) => {
+      const ia = priority.indexOf(normalizeName(a.name))
+      const ib = priority.indexOf(normalizeName(b.name))
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
     })
   }, [connectors])
@@ -124,7 +155,7 @@ function ConnectorMenu(props: {
       {props.open && (
         <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-slate-900/95 p-2 shadow-xl shadow-black/30">
           {props.orderedConnectors.map((connector) => {
-            const available = connector.ready ?? props.isBrowser
+            const available = (connector.ready ?? true) && props.isBrowser
             return (
               <button
                 key={connector.uid}
@@ -132,7 +163,7 @@ function ConnectorMenu(props: {
                 onClick={() => props.onConnect(connector.uid)}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span>{connector.name}</span>
+                <span>{prettyName(normalizeName(connector.name))}</span>
                 {!available && <span className="text-amber-300">Unavailable</span>}
               </button>
             )
