@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-labelledby="title desc">
+  <title id="title">Vote cover placeholder</title>
+  <desc id="desc">Abstract circular illustration for a voting card</desc>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="48" fill="#0f172a"/>
+  <circle cx="200" cy="200" r="140" fill="url(#g)" opacity="0.18"/>
+  <circle cx="200" cy="200" r="104" fill="url(#g)" opacity="0.35"/>
+  <circle cx="200" cy="200" r="80" fill="#0f172a"/>
+  <path d="M200 126c-41 0-74 33-74 74s33 74 74 74 74-33 74-74-33-74-74-74zm0 16c32 0 58 26 58 58s-26 58-58 58-58-26-58-58 26-58 58-58zm-8 26v36.7l30.4 18.4 7.8-13-22.2-13.5V168h-16z" fill="#e0f2fe"/>
+</svg>
