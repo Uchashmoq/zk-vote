@@ -4,6 +4,7 @@ import { injected } from 'wagmi/connectors'
 
 export function getConfig() {
   return createConfig({
+    autoConnect: false,
     chains: [mainnet, sepolia],
     storage: createStorage({
       storage: cookieStorage,
@@ -16,7 +17,7 @@ export function getConfig() {
     connectors: [
       injected({ target: 'metaMask', shimDisconnect: true }),
       injected({ target: 'phantom', shimDisconnect: true }),
-      injected({ target: 'okxWallet', shimDisconnect: true }),
+      injected({ target: 'okxwallet', shimDisconnect: true }),
       injected({ shimDisconnect: true }),
     ],
   })
