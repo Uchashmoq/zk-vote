@@ -57,7 +57,7 @@ export default function VoteCard() {
           <div className="hidden shrink-0 flex-col items-center gap-1 min-[430px]:flex">
             <ProgressRing percent={progressPercent} />
             <div className="relative text-[11px] uppercase tracking-[0.2em] text-slate-400">
-              <span className="relative z-10 animate-pulse">IN PROGRESS</span>
+              <span className="relative z-1 animate-pulse">IN PROGRESS</span>
             </div>
           </div>
         </div>

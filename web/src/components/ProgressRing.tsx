@@ -6,7 +6,7 @@ export default function ProgressRing({ percent }: { percent: number }) {
 
     return (
         <div className="relative h-16 w-16">
-            <svg viewBox="0 0 64 64" className="relative z-10 h-16 w-16">
+            <svg viewBox="0 0 64 64" className="relative z-1 h-16 w-16">
                 <circle
                     cx="32"
                     cy="32"

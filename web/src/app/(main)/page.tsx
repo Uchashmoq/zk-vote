@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { EyeOff, ShieldCheck } from 'lucide-react'
 import VoteCard from '@/components/VoteCard'
 
+
 export default function HomePage() {
   const [showVerified, setShowVerified] = useState(true)
 
   return (
     <>
+
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="space-y-8">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
