@@ -1,14 +1,12 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { headers } from 'next/headers'
 import { type ReactNode } from 'react'
 import { cookieToInitialState } from 'wagmi'
 
 import { getConfig } from '../wagmi'
 import { Providers } from './providers'
-
-const inter = Inter({ subsets: ['latin'] })
+import WalletNav from '../components/WalletNav'
 
 export const metadata: Metadata = {
   title: 'Create Wagmi',
@@ -22,8 +20,13 @@ export default async function RootLayout(props: { children: ReactNode }) {
   )
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <Providers initialState={initialState}>{props.children}</Providers>
+      <body className="font-sans antialiased">
+        <Providers initialState={initialState}>
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+            <WalletNav />
+            {props.children}
+          </div>
+        </Providers>
       </body>
     </html>
   )
