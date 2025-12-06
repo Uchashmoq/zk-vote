@@ -1,5 +1,6 @@
+'use client'
 import { useMemo, useState } from 'react'
-import { Eye, EyeOff, MoreHorizontal, Search, ShieldCheck } from 'lucide-react'
+import { MoreHorizontal, Search } from 'lucide-react'
 import {
   useAccount,
   useChainId,
@@ -50,25 +51,6 @@ function SearchBar(props: { value: string; onChange: (v: string) => void }) {
       />
       <Search className="pointer-events-none absolute right-3 h-4 w-4 text-slate-500" strokeWidth={2} />
     </div>
-  )
-}
-
-function VerifiedToggle(props: { showVerified: boolean; setShowVerified: (v: boolean) => void }) {
-  const { showVerified, setShowVerified } = props
-  return (
-    <button
-      onClick={() => setShowVerified((v) => !v)}
-      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-100 transition hover:bg-white/10"
-      aria-pressed={showVerified}
-      aria-label={showVerified ? 'Hide verified polls' : 'Show verified polls'}
-      title={showVerified ? 'Hide verified polls' : 'Show verified polls'}
-    >
-      {showVerified ? (
-        <ShieldCheck className="h-5 w-5 text-emerald-300" strokeWidth={2.2} />
-      ) : (
-        <EyeOff className="h-5 w-5 text-slate-400" strokeWidth={2.2} />
-      )}
-    </button>
   )
 }
 
@@ -137,7 +119,6 @@ export default function WalletNav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [showVerified, setShowVerified] = useState(true)
   const isBrowser = typeof window !== 'undefined'
 
   const orderedConnectors = useMemo(() => {
@@ -178,9 +159,6 @@ export default function WalletNav() {
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <SearchBar value={search} onChange={setSearch} />
-          <div className="hidden sm:flex">
-            <VerifiedToggle showVerified={showVerified} setShowVerified={setShowVerified} />
-          </div>
         </div>
         <div className="hidden items-center gap-3 sm:flex">
           <RightActions
@@ -213,9 +191,6 @@ export default function WalletNav() {
               <div className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-200">
                 <span>{isOnSepolia ? 'Sepolia' : chain?.name || 'Wrong network'}</span>
                 {isConnected && <span className="font-mono">{shorten(address)}</span>}
-              </div>
-              <div className="mt-3">
-                <VerifiedToggle showVerified={showVerified} setShowVerified={setShowVerified} />
               </div>
               <div className="mt-3 flex flex-col gap-2">
                 {!isConnected ? (
