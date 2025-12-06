@@ -6,7 +6,7 @@ import { cookieToInitialState } from 'wagmi'
 
 import { getConfig } from '../wagmi'
 import { Providers } from './providers'
-import WalletNav from '../components/WalletNav'
+import WalletNav from '@/components/WalletNav'
 
 export const metadata: Metadata = {
   title: 'Create Wagmi',

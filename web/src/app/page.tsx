@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { EyeOff, ShieldCheck } from 'lucide-react'
-import VoteCard from '../components/VoteCard'
+import VoteCard from '@/components/VoteCard'
 
 export default function HomePage() {
   const [showVerified, setShowVerified] = useState(true)
