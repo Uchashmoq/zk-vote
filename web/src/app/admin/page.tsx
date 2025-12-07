@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState } from 'react'
+import { mockVoters } from "@/mocks/mock"
 
 type Voter = {
     id: string
@@ -13,248 +14,7 @@ type Voter = {
 }
 
 export default function AdminPage() {
-    const [voters, setVoters] = useState<Voter[]>([
-        {
-            id: 'ID-001',
-            name: 'Alice',
-            address: '0x3Da763C42E438eB17880fB6A83040d6cf13eF03b',
-            email: 'alice@example.com',
-            phone: '+1 555-0001',
-            note: 'Early tester',
-        },
-        {
-            id: 'ID-002',
-            name: 'Bob',
-            address: '0x3Da763C42E438eB17880fB6A83040d6cf13eF03b',
-            email: 'bob@example.com',
-            phone: '+1 555-0002',
-            note: 'Flagged for spam',
-        },
-        {
-            id: 'ID-003',
-            name: 'Charlie',
-            address: '0x4Ef89b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9a',
-            email: 'charlie@example.com',
-            phone: '+1 555-0003',
-            note: 'VIP customer',
-        },
-        {
-            id: 'ID-004',
-            name: 'David',
-            address: '0x5Fa90b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9b',
-            email: 'david@example.com',
-            phone: '+44 20 7946 0958',
-            note: 'UK resident',
-        },
-        {
-            id: 'ID-005',
-            name: 'Eva',
-            address: '0x6Gb01b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9c',
-            email: 'eva@example.com',
-            phone: '+1 555-0005',
-            note: 'Inactive for 3 months',
-        },
-        {
-            id: 'ID-006',
-            name: 'Frank',
-            address: '0x7Hc12b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9d',
-            email: 'frank@example.com',
-            phone: '+1 555-0006',
-            note: 'Beta program',
-        },
-        {
-            id: 'ID-007',
-            name: 'Grace',
-            address: '0x8Id23b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9e',
-            email: 'grace@example.com',
-            phone: '+1 555-0007',
-            note: 'Support ticket pending',
-        },
-        {
-            id: 'ID-008',
-            name: 'Henry',
-            address: '0x9Je34b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9f',
-            email: 'henry@example.com',
-            phone: '+1 555-0008',
-            note: 'Referred by Alice',
-        },
-        {
-            id: 'ID-009',
-            name: 'Ivy',
-            address: '0x1Kf45b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9g',
-            email: 'ivy@example.com',
-            phone: '+61 2 9876 5432',
-            note: 'Australian customer',
-        },
-        {
-            id: 'ID-010',
-            name: 'Jack',
-            address: '0x2Lg56b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9h',
-            email: 'jack@example.com',
-            phone: '+1 555-0010',
-            note: 'Payment overdue',
-        },
-        {
-            id: 'ID-011',
-            name: 'Karen',
-            address: '0x3Mh67b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9i',
-            email: 'karen@example.com',
-            phone: '+1 555-0011',
-            note: 'Enterprise plan',
-        },
-        {
-            id: 'ID-012',
-            name: 'Leo',
-            address: '0x4Ni78b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9j',
-            email: 'leo@example.com',
-            phone: '+1 555-0012',
-            note: 'New signup',
-        },
-        {
-            id: 'ID-013',
-            name: 'Mona',
-            address: '0x5Oj89b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9k',
-            email: 'mona@example.com',
-            phone: '+1 555-0013',
-            note: 'Requested refund',
-        },
-        {
-            id: 'ID-014',
-            name: 'Nathan',
-            address: '0x6Pk90b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9l',
-            email: 'nathan@example.com',
-            phone: '+1 555-0014',
-            note: 'Technical support',
-        },
-        {
-            id: 'ID-015',
-            name: 'Olivia',
-            address: '0x7Ql01b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9m',
-            email: 'olivia@example.com',
-            phone: '+1 555-0015',
-            note: 'Whitelisted address',
-        },
-        {
-            id: 'ID-016',
-            name: 'Paul',
-            address: '0x8Rm12b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9n',
-            email: 'paul@example.com',
-            phone: '+33 1 23 45 67 89',
-            note: 'French user',
-        },
-        {
-            id: 'ID-017',
-            name: 'Quinn',
-            address: '0x9Sn23b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9o',
-            email: 'quinn@example.com',
-            phone: '+1 555-0017',
-            note: 'Ambassador program',
-        },
-        {
-            id: 'ID-018',
-            name: 'Rachel',
-            address: '0x1To34b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9p',
-            email: 'rachel@example.com',
-            phone: '+1 555-0018',
-            note: 'Suspended account',
-        },
-        {
-            id: 'ID-019',
-            name: 'Sam',
-            address: '0x2Up45b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9q',
-            email: 'sam@example.com',
-            phone: '+1 555-0019',
-            note: 'Trial expired',
-        },
-        {
-            id: 'ID-020',
-            name: 'Tina',
-            address: '0x3Vq56b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9r',
-            email: 'tina@example.com',
-            phone: '+1 555-0020',
-            note: 'Premium subscriber',
-        },
-        {
-            id: 'ID-021',
-            name: 'Ursula',
-            address: '0x4Wr67b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9s',
-            email: 'ursula@example.com',
-            phone: '+49 30 1234567',
-            note: 'German market',
-        },
-        {
-            id: 'ID-022',
-            name: 'Victor',
-            address: '0x5Xs78b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9t',
-            email: 'victor@example.com',
-            phone: '+1 555-0022',
-            note: 'API key limit reached',
-        },
-        {
-            id: 'ID-023',
-            name: 'Wendy',
-            address: '0x6Yt89b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9u',
-            email: 'wendy@example.com',
-            phone: '+1 555-0023',
-            note: 'Content creator',
-        },
-        {
-            id: 'ID-024',
-            name: 'Xander',
-            address: '0x7Zu90b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9v',
-            email: 'xander@example.com',
-            phone: '+81 3 1234 5678',
-            note: 'Japanese user',
-        },
-        {
-            id: 'ID-025',
-            name: 'Yvonne',
-            address: '0x8Av01b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9w',
-            email: 'yvonne@example.com',
-            phone: '+1 555-0025',
-            note: 'Affiliate partner',
-        },
-        {
-            id: 'ID-026',
-            name: 'Zack',
-            address: '0x9Bw12b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9x',
-            email: 'zack@example.com',
-            phone: '+1 555-0026',
-            note: 'Bug bounty hunter',
-        },
-        {
-            id: 'ID-027',
-            name: 'Aria',
-            address: '0x1Cx23b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9y',
-            email: 'aria@example.com',
-            phone: '+1 555-0027',
-            note: 'Moderator',
-        },
-        {
-            id: 'ID-028',
-            name: 'Blake',
-            address: '0x2Dy34b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F9z',
-            email: 'blake@example.com',
-            phone: '+1 555-0028',
-            note: 'Community manager',
-        },
-        {
-            id: 'ID-029',
-            name: 'Cora',
-            address: '0x3Ez45b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F90',
-            email: 'cora@example.com',
-            phone: '+1 555-0029',
-            note: 'Documentation contributor',
-        },
-        {
-            id: 'ID-030',
-            name: 'Dante',
-            address: '0x4Fa56b7c1C5D3f8a6B2C9d1E0f3A4B5C6D7E8F91',
-            email: 'dante@example.com',
-            phone: '+1 555-0030',
-            note: 'Security auditor',
-        }
-    ])
+    const [voters, setVoters] = useState<Voter[]>(mockVoters)
     const [filter, setFilter] = useState('')
     const [expanded, setExpanded] = useState<Record<string, boolean>>({})
     const [showModal, setShowModal] = useState(false)
@@ -333,7 +93,7 @@ export default function AdminPage() {
             </section>
 
             {showModal && (
-                <AddVoterModal
+                <AddNewVoterModal
                     voter={newVoter}
                     onChange={setNewVoter}
                     onClose={() => setShowModal(false)}
@@ -418,7 +178,7 @@ function VoterList({
     )
 }
 
-function AddVoterModal({
+function AddNewVoterModal({
     voter,
     onChange,
     onClose,
