@@ -51,8 +51,10 @@ export const providerMap = providers
   })
   .filter((provider) => provider.id !== "credentials");
 
-export const { handlers, auth, signIn } = NextAuth({
+const nextAuthResult = NextAuth({
   pages: { signIn: "/signin" },
   session: { strategy: "jwt" },
   providers,
 });
+
+export const { handlers, auth, signIn } = nextAuthResult;

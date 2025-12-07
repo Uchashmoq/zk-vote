@@ -9,7 +9,7 @@ export async function loginAction(
   try {
     await signIn("credentials", {
       password: formData.get("password"),
-      redirectTo: "/",
+      redirectTo: "/admin",
     });
     return undefined;
   } catch (error) {
