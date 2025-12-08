@@ -9,16 +9,23 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.1.0",
+    "@prisma/client": "^7.1.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@tanstack/react-query": "latest",
+    "@types/pg": "^8.15.6",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.555.0",
     "next": "latest",
     "next-auth": "^5.0.0-beta.30",
+    "pg": "^8.16.3",
     "postcss": "^8.5.6",
+    "prisma": "^7.1.0",
     "react": "latest",
     "react-dom": "latest",
     "tailwindcss": "^4.1.17",
+    "tsx": "^4.21.0",
     "viem": "latest",
     "wagmi": "latest"
   },
