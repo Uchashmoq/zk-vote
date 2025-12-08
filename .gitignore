@@ -21,6 +21,7 @@
 
 /ptau
 /github-reference
+/.env
 
 
 
@@ -52,12 +53,15 @@
 
 # local env files
 /web/.env*.local
+/web/.env
 
 # vercel
 /web/.vercel
 
 # typescript
 /web/*.tsbuildinfo
+
+
 
 
 
