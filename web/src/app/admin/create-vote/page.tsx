@@ -14,6 +14,7 @@ export default function CreateVotePage() {
     const [start, setStart] = useState("")
     const [end, setEnd] = useState("")
     const [image, setImage] = useState<File | null>(null)
+    const [imagePreview, setImagePreview] = useState<string | null>(null)
 
     const [activeTab, setActiveTab] = useState<"voters" | "candidates">("voters")
 
@@ -44,7 +45,10 @@ export default function CreateVotePage() {
 
     function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
-        if (file) setImage(file)
+        if (file) {
+            setImage(file)
+            setImagePreview(URL.createObjectURL(file))
+        }
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -82,8 +86,8 @@ export default function CreateVotePage() {
             <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/30">
                 <div className="gap-4 flex flex-row h-60">
                     <div className="flex aspect-square w-60 h-60 flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-slate-900/60 p-4 text-sm text-slate-300">
-                        {image ? (
-                            <p className="text-center text-xs text-emerald-300">Image selected: {image.name}</p>
+                        {imagePreview ? (
+                            <img src={imagePreview} alt="Cover preview" className="h-full w-full rounded-lg object-cover" />
                         ) : (
                             <p className="text-center">Upload cover image</p>
                         )}
