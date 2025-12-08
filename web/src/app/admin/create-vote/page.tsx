@@ -1,9 +1,11 @@
 "use client"
 
 import { Search } from "lucide-react"
-import { useState } from "react"
-import { mockVoters, Voter } from "@/mocks/mock"
-type VoterRecord = { voter: Voter, selected: boolean, display: boolean }
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react"
+import { Voter } from "../../../../prisma/src/lib/prisma/client"
+import { getVoters } from "@/actions"
+import VoterPickerModal from "@/components/VoterPickerModal"
+
 type Candidate = { name: string, img: string, notes: string }
 
 
@@ -19,6 +21,8 @@ export default function CreateVotePage() {
     const [activeTab, setActiveTab] = useState<"voters" | "candidates">("voters")
 
     const [candidates, setCandidates] = useState<Candidate[]>([])
+
+    const [voterPicked, setVoterPicked] = useState<Record<number, boolean>>({})
     const addCandidate = (candidate: Candidate) => {
         setCandidates((prev) => {
             const next = prev.slice()
@@ -35,10 +39,12 @@ export default function CreateVotePage() {
         })
     }
 
-    const voterRecordsStates = mockVoters.map((v) => {
-        const vr = { voter: v, selected: false, display: true }
-        return useState<VoterRecord>(vr)
-    })
+    const [voters, setVoters] = useState<Voter[]>([])
+    useEffect(() => {
+        getVoters().then(setVoters)
+    }, [])
+
+
 
     const [showVoterPicker, setShowVoterPicker] = useState(false)
     const [showAddCandidateModal, setShowCandidateModal] = useState(false)
@@ -60,12 +66,7 @@ export default function CreateVotePage() {
 
     function getActiveListLen() {
         if (activeTab === "voters") {
-            let len = 0
-            for (let i = 0; i < voterRecordsStates.length; i++) {
-                const state = voterRecordsStates[i][0]
-                if (state.selected) len++;
-            }
-            return len
+            return Object.values(voterPicked).filter(v => v).length
         } else {
             return candidates.length
         }
@@ -80,7 +81,6 @@ export default function CreateVotePage() {
             <header className="flex flex-col gap-2">
                 <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Admin · Create Vote</p>
                 <h1 className="text-3xl font-bold">New Vote</h1>
-
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/30">
@@ -184,20 +184,20 @@ export default function CreateVotePage() {
                                 No {activeTab}.
                             </div>
                         )}
-                        {activeTab === "voters" ? voterRecordsStates.map((s, i) => (
+                        {activeTab === "voters" ? voters.map((v) => (
                             <div
-                                key={i}
-                                className={`rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 ${s[0].selected ? "" : "hidden"}`}
+                                key={v.id}
+                                className={`rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 ${voterPicked[v.id] ? "" : "hidden"} `}
                             >
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold">{s[0].voter.name}</p>
-                                        {s[0].voter.address && <p className="truncate text-xs text-slate-400">{s[0].voter.address}</p>}
-                                        {s[0].voter.email && <p className="truncate text-xs text-slate-500">{s[0].voter.email}</p>}
+                                        <p className="truncate text-sm font-semibold">{v.name}</p>
+                                        {v.address && <p className="truncate text-xs text-slate-400">{v.address}</p>}
+                                        {v.email && <p className="truncate text-xs text-slate-500">{v.email}</p>}
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => { s[1]({ voter: s[0].voter, selected: false, display: s[0].display }) }}
+                                        onClick={() => { setVoterPicked((prev) => ({ ...prev, [v.id]: false })) }}
                                         className="text-xs font-semibold text-red-200 hover:text-red-100"
                                     >
                                         Remove
@@ -244,8 +244,10 @@ export default function CreateVotePage() {
 
                 {showVoterPicker && activeTab === "voters" && (
                     <VoterPickerModal
-                        states={voterRecordsStates}
-                        onAdd={() => { setShowVoterPicker(false) }}
+                        voters={voters}
+                        voterPicked={voterPicked}
+                        setVoterPicked={setVoterPicked}
+                        onClose={() => { setShowVoterPicker(false) }}
                     />
                 )}
 
@@ -362,108 +364,3 @@ function AddCandidateModal({
 }
 
 
-function VoterPickerModal({
-    states,
-    onAdd,
-}: {
-    states: [VoterRecord, React.Dispatch<React.SetStateAction<VoterRecord>>][]
-    onAdd: () => void
-}) {
-    const [searchInput, setSearchInput] = useState("")
-    function search() {
-        const query = searchInput.trim().toLowerCase()
-        states.forEach((s) => {
-            const voter = s[0].voter;
-            const satisfied =
-                query === "" ||
-                Object.values(voter).some((value) =>
-                    value?.toString().toLowerCase().includes(query),
-                )
-            s[1]({ voter: voter, selected: s[0].selected, display: satisfied })
-        })
-    }
-
-
-    function getVisibleStatesLen() {
-        let len = 0;
-        for (let i = 0; i < states.length; i++) {
-            if (states[i][0].display) len++;
-        }
-        return len
-    }
-
-    function onAddDisplayAll() {
-        states.forEach((s) => {
-            s[1]({ voter: s[0].voter, selected: s[0].selected, display: true })
-        })
-        onAdd()
-    }
-
-
-    return (
-        <div className="fixed  inset-0 z-50 grid place-items-center bg-black/60 px-4">
-            <div className="w-[720px] max-w-[720px] rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-black/50">
-                <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-lg font-semibold text-slate-50">Select voters</h3>
-                </div>
-                <div className="mt-3 flex gap-2">
-                    <input
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        placeholder="Search voters..."
-                        className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
-                    />
-                    <button
-                        type="button"
-                        onClick={search}
-                        className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-400 to-indigo-500 px-3 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-indigo-500/30 transition hover:brightness-110"
-                    >
-                        <Search className="h-4 w-4" />
-                        Search
-                    </button>
-                </div>
-                <div className="mt-4 max-h-[50vh] space-y-2 overflow-y-auto pr-1">
-                    {getVisibleStatesLen() === 0 && (
-                        <div className="rounded-lg border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-                            No voters found.
-                        </div>
-                    )}
-                    {states.map((s, i) => {
-                        const record = s[0];
-                        const setRecord = s[1];
-                        const voter = record.voter;
-                        return (
-                            <label
-                                key={i}
-                                className={`flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 ${record.display ? "" : "hidden"}`}
-                            >
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold">{voter.name}</p>
-                                    {voter.address && <p className="truncate text-xs text-slate-400">{voter.address}</p>}
-                                    {voter.email && <p className="truncate text-xs text-slate-500">{voter.email}</p>}
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={record.selected}
-                                    onChange={() => {
-                                        setRecord({ voter: voter, selected: !record.selected, display: record.display })
-                                    }}
-                                    className="h-4 w-4 accent-cyan-400"
-                                />
-                            </label>
-                        )
-                    })}
-                </div>
-                <div className="mt-4 flex justify-end gap-2">
-
-                    <button
-                        onClick={onAddDisplayAll}
-                        className="rounded-lg bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-indigo-500/30 transition hover:brightness-110"
-                    >
-                        Add selected
-                    </button>
-                </div>
-            </div>
-        </div>
-    )
-}
