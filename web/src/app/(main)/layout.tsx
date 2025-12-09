@@ -12,7 +12,7 @@ export default function RootLayout(props: { children: ReactNode }) {
     <div className="font-sans antialiased">
 
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-        <WalletNav showSearchBar={true} />
+        <WalletNav />
         {props.children}
       </div>
 

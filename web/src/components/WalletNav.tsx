@@ -8,19 +8,7 @@ function shorten(addr?: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
 }
 
-function SearchBar() {
-  return (
-    <div className="relative flex w-full min-w-[180px] max-w-lg items-center">
-      <input
-        value=""
-        readOnly
-        placeholder="Search for vote"
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
-      />
-      <Search className="pointer-events-none absolute right-3 h-4 w-4 text-slate-500" strokeWidth={2} />
-    </div>
-  )
-}
+
 
 function RightActions() {
   const { status, address } = useAccount()
@@ -65,15 +53,12 @@ function RightActions() {
   )
 }
 
-export default function WalletNav({ showSearchBar }: { showSearchBar: boolean }) {
+export default function WalletNav() {
   return (
     <nav className="sticky top-0 z-10 border-b border-white/10 bg-slate-900/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-6 py-4">
+      <div className="mx-auto flex max-w-6xl flex-wrap justify-between items-center gap-3 px-6 py-4">
         <div className="hidden sm:block">
           <Brand />
-        </div>
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          {showSearchBar && <SearchBar />}
         </div>
         <RightActions />
       </div>
