@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "30mb",
+    },
+  },
   images: {
     remotePatterns: [
       {
@@ -17,6 +22,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "images.pexels.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.mypinata.cloud",
       },
     ],
     dangerouslyAllowLocalIP: true,

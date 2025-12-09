@@ -1,12 +1,13 @@
 "use client"
 
+import Image from "next/image"
 import { Search } from "lucide-react"
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react"
+import { Dispatch, SetStateAction, startTransition, useEffect, useMemo, useState } from "react"
 import { Voter } from "../../../../prisma/src/lib/prisma/client"
-import { getVoters } from "@/actions"
+import { getVoters, uploadImageAction } from "@/actions"
 import VoterPickerModal from "@/components/VoterPickerModal"
 
-type Candidate = { name: string, img: string, notes: string }
+type Candidate = { name: string, imageUrl: string, imageCid: string, notes: string }
 
 
 
@@ -15,11 +16,9 @@ export default function CreateVotePage() {
     const [description, setDescription] = useState("")
     const [start, setStart] = useState("")
     const [end, setEnd] = useState("")
-    const [image, setImage] = useState<File | null>(null)
-    const [imagePreview, setImagePreview] = useState<string | null>(null)
-
+    const [imageUrl, setImageUrl] = useState<string>()
+    const [imageCid, setImageCid] = useState<string>()
     const [activeTab, setActiveTab] = useState<"voters" | "candidates">("voters")
-
     const [candidates, setCandidates] = useState<Candidate[]>([])
 
     const [voterPicked, setVoterPicked] = useState<Record<number, boolean>>({})
@@ -52,8 +51,19 @@ export default function CreateVotePage() {
     function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
         if (file) {
-            setImage(file)
-            setImagePreview(URL.createObjectURL(file))
+            const fd = new FormData()
+            fd.append('file', file)
+            startTransition(async () => {
+                const res = await uploadImageAction(fd)
+                if (!('error' in res)) {
+                    setImageUrl(res.url)
+                    setImageCid(res.cid)
+                } else {
+                    setImageUrl("")
+                    setImageCid("")
+                }
+            })
+
         }
     }
 
@@ -85,13 +95,25 @@ export default function CreateVotePage() {
 
             <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/30">
                 <div className="gap-4 flex flex-row h-60">
-                    <div className="flex aspect-square w-60 h-60 flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-slate-900/60 p-4 text-sm text-slate-300">
-                        {imagePreview ? (
-                            <img src={imagePreview} alt="Cover preview" className="h-full w-full rounded-lg object-cover" />
+                    <div className="relative flex aspect-square w-60 h-60 flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-slate-900/60 p-4 text-sm text-slate-300 overflow-hidden">
+                        {imageUrl ? (
+                            <>
+                                <Image src={imageUrl} alt="Cover preview" fill className="rounded-lg object-cover" sizes="240px" />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setImageUrl("")
+                                        setImageCid("")
+                                    }}
+                                    className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-sm font-bold text-white shadow-lg transition hover:bg-black/80"
+                                >
+                                    ×
+                                </button>
+                            </>
                         ) : (
                             <p className="text-center">Upload cover image</p>
                         )}
-                        <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/20">
+                        <label className="absolute bottom-4 left-1/2 z-10 inline-flex -translate-x-1/2 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 opacity-70 transition hover:opacity-100 hover:bg-white/30 hover:border-white/30">
                             Choose file
                             <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                         </label>
@@ -212,9 +234,9 @@ export default function CreateVotePage() {
                                         className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100"
                                     >
                                         <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-slate-800">
-                                            {candidate.img ? (
+                                            {candidate.imageUrl ? (
                                                 <img
-                                                    src={candidate.img}
+                                                    src={candidate.imageUrl}
                                                     alt={candidate.name}
                                                     className="h-full w-full object-cover"
                                                 />
@@ -280,19 +302,30 @@ function AddCandidateModal({
 }: { addCandidate: (candidate: Candidate) => void, onClose: () => void }) {
     const [name, setName] = useState("")
     const [notes, setNotes] = useState("")
-    const [img, setImg] = useState("")
-    const [fileName, setFileName] = useState("")
-
+    const [imageUrl, setImageUrl] = useState<string>("")
+    const [imageCid, setImageCid] = useState<string>("")
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
-        if (!file) return
-        setFileName(file.name)
-        setImg(URL.createObjectURL(file))
+        if (file) {
+            const fd = new FormData()
+            fd.append('file', file)
+            startTransition(async () => {
+                const res = await uploadImageAction(fd)
+                if (!('error' in res)) {
+                    setImageUrl(res.url)
+                    setImageCid(res.cid)
+                } else {
+                    setImageUrl("")
+                    setImageCid("")
+                }
+            })
+
+        }
     }
 
     const onSave = () => {
         if (!name.trim()) return
-        addCandidate({ name: name.trim(), img, notes: notes.trim() })
+        addCandidate({ name: name.trim(), imageUrl: imageUrl.trim(), imageCid: imageCid.trim(), notes: notes.trim() })
         onClose()
     }
 
@@ -320,16 +353,36 @@ function AddCandidateModal({
                         <p className="text-xs text-slate-400">Candidate image</p>
                         <div className="mt-2 flex items-center justify-between gap-3">
                             <div className="text-xs text-slate-300">
-                                {fileName ? `Selected: ${fileName}` : "Upload image (optional)"}
+                                {!imageUrl && "Upload image (optional)"}
                             </div>
-                            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/20">
-                                Choose file
-                                <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                            </label>
+                            <div className="flex items-center gap-2">
+                                {imageUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setImageUrl("")
+                                            setImageCid("")
+                                        }}
+                                        className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/5"
+                                    >
+                                        Remove
+                                    </button>
+                                )}
+                                <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/20">
+                                    Choose file
+                                    <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                                </label>
+                            </div>
                         </div>
-                        {img && (
-                            <div className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
-                                <img src={img} alt={name || "candidate"} className="h-40 w-full object-cover" />
+                        {imageUrl && (
+                            <div className="relative mt-3 h-40 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+                                <Image
+                                    src={imageUrl}
+                                    alt={name || "candidate"}
+                                    fill
+                                    className="object-cover"
+                                    sizes="100vw"
+                                />
                             </div>
                         )}
                     </div>
@@ -362,5 +415,3 @@ function AddCandidateModal({
         </div>
     )
 }
-
-

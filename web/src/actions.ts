@@ -5,6 +5,8 @@ import { AuthError } from "next-auth";
 import prisma from "@/lib/prisma";
 import { Voter } from "../prisma/src/lib/prisma/client";
 import { isAddress } from "viem";
+import { pinata } from "./pinata";
+import { NextResponse } from "next/server";
 
 export async function loginAction(
   formData: FormData
@@ -93,4 +95,18 @@ export async function createVoterAction(
 
 export async function getVoters() {
   return prisma.voter.findMany();
+}
+
+export async function uploadImageAction(
+  formData: FormData
+): Promise<{ cid: string; url: string } | { error: string }> {
+  try {
+    const file: File | null = formData.get("file") as unknown as File;
+    const { cid } = await pinata.upload.public.file(file);
+    const url = await pinata.gateways.public.convert(cid);
+    return { cid, url };
+  } catch (e) {
+    console.log(e);
+    return { error: "could not upload image" };
+  }
 }
