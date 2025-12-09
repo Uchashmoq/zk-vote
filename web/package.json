@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:css": "npx @tailwindcss/cli -i app.css -o public/output.css"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
@@ -35,6 +36,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@wagmi/cli": "latest",
+    "daisyui": "^5.5.8",
     "typescript": "latest"
   }
 }
