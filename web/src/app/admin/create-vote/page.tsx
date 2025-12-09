@@ -2,10 +2,13 @@
 
 import Image from "next/image"
 import { Search } from "lucide-react"
-import { Dispatch, SetStateAction, startTransition, useEffect, useMemo, useState } from "react"
+import { startTransition, useEffect, useState } from "react"
 import { Voter } from "../../../../prisma/src/lib/prisma/client"
 import { getVoters, uploadImageAction } from "@/actions"
 import VoterPickerModal from "@/components/VoterPickerModal"
+import { usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi"
+import { zkVoteFactoryAddress } from "@/address"
+import { zkVoteFactoryAbi } from "@/abi"
 
 type Candidate = { name: string, imageUrl: string, imageCid: string, notes: string }
 
@@ -47,6 +50,18 @@ export default function CreateVotePage() {
 
     const [showVoterPicker, setShowVoterPicker] = useState(false)
     const [showAddCandidateModal, setShowCandidateModal] = useState(false)
+    const publicClient = usePublicClient()
+    const { writeContract, data: hash, isPending } = useWriteContract()
+    const { isLoading: isConfirming, isSuccess, isError } =
+        useWaitForTransactionReceipt({ hash })
+
+    useEffect(() => {
+        if (isSuccess) {
+            alert("Transaction success")
+        } else if (isError) {
+            alert("Transaction failed")
+        }
+    }, [isSuccess, isError])
 
     function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -67,11 +82,61 @@ export default function CreateVotePage() {
         }
     }
 
-    function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
-        alert(
-            `Created vote`,
-        )
+        if (!title.trim() || !description.trim() || !start || !end) {
+            alert("Please complete all required fields.")
+            return
+        }
+        const startSeconds = Math.floor(new Date(start).getTime() / 1000)
+        const endSeconds = Math.floor(new Date(end).getTime() / 1000)
+        if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds)) {
+            alert("Invalid start or end time.")
+            return
+        }
+        const startTime = BigInt(startSeconds)
+        const endTime = BigInt(endSeconds)
+        if (endTime <= startTime) {
+            alert("End time must be after start time.")
+            return
+        }
+        const client = publicClient
+        if (!client) {
+            alert("No public client available.")
+            return
+        }
+        const block = await client.getBlock()
+        if (endTime <= block.timestamp) {
+            alert("End time must be after current block time.")
+            return
+        }
+        const voteMeta = JSON.stringify({ title: title, description: description, imageUrl: imageUrl, imageCid: imageCid })
+        const pickedVoterAddress = voters.reduce<string[]>((acc, voter) => {
+            if (voterPicked[voter.id] && voter.address) {
+                acc.push(voter.address)
+            }
+            return acc
+        }, [])
+
+        const candidateMetas = candidates.map((c) => {
+            return JSON.stringify(c)
+        })
+
+        const args = [
+            voteMeta,
+            candidateMetas,
+            pickedVoterAddress,
+            startTime,
+            endTime
+        ]
+
+        writeContract({
+            address: zkVoteFactoryAddress,
+            abi: zkVoteFactoryAbi,
+            functionName: 'createVote',
+            args: args
+        })
+
     }
 
     function getActiveListLen() {
@@ -81,10 +146,6 @@ export default function CreateVotePage() {
             return candidates.length
         }
     }
-
-
-
-
 
     return (
         <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 text-slate-100">
@@ -122,7 +183,7 @@ export default function CreateVotePage() {
                         <input
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Vote name"
+                            placeholder="Vote title"
                             className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-3 text-lg font-semibold text-slate-50 placeholder:text-slate-500 outline-none focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
                         />
                         <textarea
@@ -289,8 +350,9 @@ export default function CreateVotePage() {
                 form=""
                 onClick={handleSubmit}
                 className="fixed bottom-8 right-8 z-40 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-xl shadow-indigo-500/40 transition hover:scale-105 hover:shadow-2xl"
+                disabled={isPending || isConfirming}
             >
-                Create vote
+                {isPending || isConfirming ? <span className="loading loading-dots loading-md"></span> : "Create vote"}
             </button>
         </main>
     )

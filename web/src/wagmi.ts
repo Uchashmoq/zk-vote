@@ -1,25 +1,16 @@
-import { cookieStorage, createConfig, createStorage, http } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { http, createConfig } from "wagmi";
+import { sepolia } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
+const config = createConfig({
+  chains: [sepolia],
+  connectors: [injected()],
+  transports: {
+    [sepolia.id]: http(),
+  },
+});
 
 export function getConfig() {
-  return createConfig({
-    chains: [mainnet, sepolia],
-    storage: createStorage({
-      storage: cookieStorage,
-    }),
-    ssr: false,
-    transports: {
-      [mainnet.id]: http(),
-      [sepolia.id]: http(),
-    },
-    connectors: [
-      injected({ target: "metaMask", shimDisconnect: true }),
-      injected({ target: "phantom", shimDisconnect: true }),
-      injected({ target: "okxWallet", shimDisconnect: true }),
-      injected({ shimDisconnect: true }),
-    ],
-  });
+  return config;
 }
 
 declare module "wagmi" {
