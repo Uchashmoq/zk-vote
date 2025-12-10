@@ -1,9 +1,9 @@
 export default function ProgressRing({ percent }: { percent: number }) {
+
     const clamped = Math.min(100, Math.max(0, percent))
     const radius = 28
     const circumference = 2 * Math.PI * radius
     const offset = circumference * (1 - clamped / 100)
-
     return (
         <div className="relative h-16 w-16">
             <svg viewBox="0 0 64 64" className="relative z-1 h-16 w-16">
@@ -26,6 +26,7 @@ export default function ProgressRing({ percent }: { percent: number }) {
                     strokeDasharray={circumference}
                     strokeDashoffset={offset}
                     strokeLinecap="round"
+                    transform="rotate(-90 32 32)"
                 />
                 {/* 闪烁高光环 */}
                 <circle
@@ -38,6 +39,7 @@ export default function ProgressRing({ percent }: { percent: number }) {
                     strokeDasharray={circumference}
                     strokeDashoffset={offset}
                     strokeLinecap="round"
+                    transform="rotate(-90 32 32)"
                     className="animate-pulse opacity-50"
                 />
                 <defs>
@@ -53,7 +55,7 @@ export default function ProgressRing({ percent }: { percent: number }) {
             </svg>
 
             <div className="pointer-events-none absolute inset-1 grid place-items-center rounded-full bg-slate-950 text-[11px] font-semibold text-slate-50">
-                <span className="animate-pulse">
+                <span className={`${clamped < 100 ? "animate-pulse" : ""}`}>
                     {clamped}%
                 </span>
             </div>

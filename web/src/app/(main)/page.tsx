@@ -1,24 +1,47 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CircleStar, Eye, EyeOff, Search, ShieldCheck } from 'lucide-react'
 import VoteCard from '@/components/VoteCard'
+import { useAccount } from 'wagmi'
+import { queryVotes } from '@/actions'
 
 
-
+type Vote = { voteAddr: string; voteMeta: string }
 export default function HomePage() {
   const [showVerified, setShowVerified] = useState(true)
   const [hideEnded, setHideEnded] = useState(false)
   const [hideNotStarted, setHideNotStarted] = useState(false)
   const [committedOnly, setCommittedOnly] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [queryInput, setQueryInput] = useState('')
+  const { status, address } = useAccount()
+  const [votes, setVotes] = useState<Vote[]>([])
+  const filteredVotes = useMemo(() => {
+    if (!query) return votes
+    const q = query.toLowerCase()
+    return votes.filter(({ voteAddr, voteMeta }) => {
+      if (voteAddr.toLowerCase().includes(q)) return true
+      try {
+        const parsed = JSON.parse(voteMeta) as Record<string, unknown>
+        return Object.values(parsed).some(
+          (value) => typeof value === 'string' && value.toLowerCase().includes(q)
+        )
+      } catch {
+        return voteMeta.toLowerCase().includes(q)
+      }
+    })
+  }, [query, votes])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setQuery(queryInput.trim()), 250)
     return () => window.clearTimeout(timeoutId)
   }, [queryInput])
 
+  useEffect(() => {
+    queryVotes(committedOnly ? address : undefined, showVerified, hideNotStarted, hideEnded).then(setVotes)
+  }, [showVerified, address, hideNotStarted, hideEnded, committedOnly])
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
@@ -33,18 +56,16 @@ export default function HomePage() {
             className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none"
           />
         </div>
-        {/* TODO 修复，没有点击filter按钮，点击filter按钮附近的地方下拉列表也会弹出来 */}
-        <div className="dropdown z-2">
+        <div className="relative">
           <button
             type="button"
-            tabIndex={0}
+            onClick={() => setMenuOpen((prev) => !prev)}
             className="btn btn-sm rounded-md border border-white/5 bg-white/5 px-4 text-sm font-semibold text-slate-100 hover:border-white/20 hover:bg-white/10"
           >
             Filters
           </button>
-          <ul
-            tabIndex={-1}
-            className="dropdown-content z-1 mt-2 flex w-64 flex-col gap-1 rounded-xl border border-white/10 bg-slate-900/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
+          {menuOpen && <ul
+            className="absolute z-2 right-0 top-full mt-2 flex w-64 flex-col gap-1 rounded-xl border border-white/10 bg-slate-900/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
           >
             <li>
               <button
@@ -88,7 +109,7 @@ export default function HomePage() {
                 {hideNotStarted ? 'Hide upcoming' : 'Show upcoming'}
               </button>
             </li>
-            <li>
+            {status === "connected" && <li>
               <button
                 type="button"
                 onClick={() => setCommittedOnly((prev) => !prev)}
@@ -101,15 +122,24 @@ export default function HomePage() {
                 )}
                 {committedOnly ? 'Committed only' : 'Any commitment'}
               </button>
-            </li>
-          </ul>
+            </li>}
+          </ul>}
         </div>
       </div>
 
       <div className="space-y-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <VoteCard />
-          <VoteCard /><VoteCard /><VoteCard /><VoteCard /><VoteCard /><VoteCard /><VoteCard /><VoteCard />
+          {
+
+            filteredVotes.map((v) => {
+              return (
+                <VoteCard
+                  key={v.voteAddr}
+                  address={v.voteAddr}
+                  meta={v.voteMeta}
+                />
+              )
+            })}
         </div>
       </div>
     </main>

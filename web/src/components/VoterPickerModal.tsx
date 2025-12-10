@@ -29,12 +29,9 @@ export default function VoterPickerModal({
             }),
         [filter, voters],
     )
-    function countVoterPicked() {
-        return Object.values(voterPicked).filter(v => v).length
+    function notFoundShow(): boolean {
+        return Object.values(filteredVoters).filter(v => v).length == 0 && filter.length != 0
     }
-
-
-
 
     return (
         <div className="fixed  inset-0 z-50 grid place-items-center bg-black/60 px-4">
@@ -52,13 +49,12 @@ export default function VoterPickerModal({
 
                 </div>
                 <div className="mt-4 max-h-[50vh] space-y-2 overflow-y-auto pr-1">
-                    {countVoterPicked() === 0 && (
+                    {notFoundShow() && (
                         <div className="rounded-lg border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
                             No voters found.
                         </div>
                     )}
                     {filteredVoters.map((v) => {
-
                         return (
                             <label
                                 key={v.id}

@@ -6,7 +6,21 @@ import prisma from "@/lib/prisma";
 import { Voter } from "../prisma/src/lib/prisma/client";
 import { isAddress } from "viem";
 import { pinata } from "./pinata";
-import { NextResponse } from "next/server";
+import { zkVoteFactoryAddress } from "./address";
+import { ethers } from "ethers";
+import { zkVoteAbi, zkVoteFactoryAbi } from "./abi";
+
+const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL!;
+const PRIVATE_KEY = process.env.PRIVATE_KEY!;
+const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL);
+const zkVoteFactory = new ethers.Contract(
+  zkVoteFactoryAddress,
+  zkVoteFactoryAbi,
+  provider
+);
+const creatorAddress = ethers.getAddress(
+  new ethers.Wallet(PRIVATE_KEY).address
+);
 
 export async function loginAction(
   formData: FormData
@@ -109,4 +123,67 @@ export async function uploadImageAction(
     console.log(e);
     return { error: "could not upload image" };
   }
+}
+
+export async function queryVotes(
+  committedVoter: string | undefined,
+  verified: boolean,
+  hideNotStarted: boolean,
+  hideEnded: boolean
+): Promise<{ voteAddr: string; voteMeta: string }[]> {
+  const creator = verified ? creatorAddress : ethers.ZeroAddress;
+  const voter =
+    committedVoter && committedVoter.trim()
+      ? ethers.getAddress(committedVoter)
+      : ethers.ZeroAddress;
+  const [voteAddrs, voteMetas]: [string[], string[]] =
+    await zkVoteFactory.queryVote(creator, voter, hideNotStarted, hideEnded);
+
+  return voteAddrs.map((voteAddr, index) => ({
+    voteAddr,
+    voteMeta: voteMetas[index],
+  }));
+}
+
+export async function getVoteTime(
+  address: string
+): Promise<{ startTime: BigInt; endTime: BigInt }> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider
+  );
+  const [startTime, endTime] = await Promise.all([
+    voteContract.startTime(),
+    voteContract.endTime(),
+  ]);
+
+  return { startTime, endTime };
+}
+
+export async function getAllCandidates(
+  address: string
+): Promise<{ votes: number; meta: string }[]> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider
+  );
+  const candidates: { votes: bigint; meta: string }[] =
+    await voteContract.allCandidates();
+
+  return candidates.map((candidate) => ({
+    votes: Number(candidate.votes),
+    meta: candidate.meta,
+  }));
+}
+
+export async function getAllVoters(address: string): Promise<string[]> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider
+  );
+  const voters: string[] = await voteContract.allVotes();
+  return voters.map((voter) => ethers.getAddress(voter));
 }
