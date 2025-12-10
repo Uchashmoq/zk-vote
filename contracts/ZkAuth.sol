@@ -7,6 +7,7 @@ contract ZkAuth is MerkleTree {
     mapping(bytes32 => bool) public isCommitmentUsed;
     mapping(address => bool) public isCommitted;
     address public immutable verifier;
+    bytes32[] public commitments;
 
     event Commit(
         bytes32 indexed commitment,
@@ -49,7 +50,16 @@ contract ZkAuth is MerkleTree {
         isCommitted[msg.sender] = true;
         isCommitmentUsed[_commitment] = true;
         uint32 index = _insert(_commitment);
+        commitments.push(_commitment);
         emit Commit(_commitment, index, block.timestamp);
+    }
+
+    function allCommitments() public view returns (bytes32[] memory) {
+        return commitments;
+    }
+
+    function commitmentNum() public view returns (uint256) {
+        return commitments.length;
     }
 
     function auth(

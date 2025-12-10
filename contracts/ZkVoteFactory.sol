@@ -29,6 +29,76 @@ contract ZkVoteFactory {
         return votes;
     }
 
+    function check(
+        ZkVote v,
+        address creator,
+        address committedVoter,
+        bool hideNotStarted,
+        bool hideEnded
+    ) private view returns (bool) {
+        if (creator != address(0)) {
+            if (creatorOfVote[address(v)] != creator) return false;
+        }
+
+        if (committedVoter != address(0)) {
+            if (!v.isCommitted(committedVoter)) return false;
+        }
+
+        if (hideNotStarted) {
+            if (v.startTime() > block.timestamp) return false;
+        }
+
+        if (hideEnded) {
+            if (v.endTime() < block.timestamp) return false;
+        }
+
+        return true;
+    }
+
+    function queryVote(
+        address creator,
+        address committedVoter,
+        bool hideNotStarted,
+        bool hideEnded
+    )
+        public
+        view
+        returns (address[] memory voteAddrs, string[] memory voteMetas)
+    {
+        uint256 cnt = 0;
+        for (uint256 i = 0; i < votes.length; i++) {
+            if (
+                check(
+                    votes[i],
+                    creator,
+                    committedVoter,
+                    hideNotStarted,
+                    hideEnded
+                )
+            ) {
+                cnt++;
+            }
+        }
+        voteAddrs = new address[](cnt);
+        voteMetas = new string[](cnt);
+        uint256 j = 0;
+        for (uint256 i = 0; i < votes.length; i++) {
+            if (
+                check(
+                    votes[i],
+                    creator,
+                    committedVoter,
+                    hideNotStarted,
+                    hideEnded
+                )
+            ) {
+                voteAddrs[j] = address(votes[i]);
+                voteMetas[j] = ZkVote(votes[i]).meta();
+                j++;
+            }
+        }
+    }
+
     function createVote(
         string memory _voteMeta,
         string[] memory _candiateMetas,

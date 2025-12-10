@@ -13,7 +13,7 @@ contract ZkVote is ZkAuth {
     Candidate[] public candidates;
     mapping(bytes32 => bool) public isNullifierUsed;
     mapping(address => bool) public isVoter;
-    uint256 public voterNum;
+    address[] public voters;
 
     event Vote(
         bytes32 indexed nullifier,
@@ -43,7 +43,7 @@ contract ZkVote is ZkAuth {
         for (uint256 i = 0; i < _voters.length; i++) {
             isVoter[_voters[i]] = true;
         }
-        voterNum = _voters.length;
+        voters = _voters;
         meta = _meta;
     }
 
@@ -71,5 +71,17 @@ contract ZkVote is ZkAuth {
 
     function candidateNum() public view returns (uint256) {
         return candidates.length;
+    }
+
+    function voterNum() public view returns (uint256) {
+        return voters.length;
+    }
+
+    function allVotes() public view returns (address[] memory) {
+        return voters;
+    }
+
+    function allCandidates() public view returns (Candidate[] memory) {
+        return candidates;
     }
 }
