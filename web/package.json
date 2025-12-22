@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "build:css": "npx @tailwindcss/cli -i app.css -o public/output.css"
+    "lint": "next lint"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
@@ -16,8 +15,10 @@
     "@tanstack/react-query": "latest",
     "@types/pg": "^8.15.6",
     "autoprefixer": "^10.4.20",
+    "circomlibjs": "^0.1.7",
     "dotenv": "^17.2.3",
     "ethers": "^6.16.0",
+    "idb-keyval": "^6.2.2",
     "lucide-react": "^0.555.0",
     "next": "latest",
     "next-auth": "^5.0.0-beta.30",
@@ -27,6 +28,7 @@
     "prisma": "^7.1.0",
     "react": "latest",
     "react-dom": "latest",
+    "snarkjs": "^0.7.5",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.21.0",
     "viem": "latest",

@@ -9,6 +9,15 @@ import { pinata } from "./pinata";
 import { zkVoteFactoryAddress } from "./address";
 import { ethers } from "ethers";
 import { zkVoteAbi, zkVoteFactoryAbi } from "./abi";
+import {
+  Candidate,
+  stringToCandidateMeta,
+  stringToVoteMeta,
+  Vote,
+  VoteMeta,
+} from "./types";
+import { notFound } from "next/navigation";
+import { Commitment } from "./lib/zk-auth";
 
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL!;
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
@@ -161,9 +170,9 @@ export async function getVoteTime(
   return { startTime, endTime };
 }
 
-export async function getAllCandidates(
+async function getAllCandidates0(
   address: string
-): Promise<{ votes: number; meta: string }[]> {
+): Promise<{ index: number; votes: number; meta: string }[]> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
@@ -172,10 +181,23 @@ export async function getAllCandidates(
   const candidates: { votes: bigint; meta: string }[] =
     await voteContract.allCandidates();
 
-  return candidates.map((candidate) => ({
+  //console.log(candidates[0].meta);
+  return candidates.map((candidate, i) => ({
+    index: i,
     votes: Number(candidate.votes),
     meta: candidate.meta,
   }));
+}
+
+export async function getAllCandidates(address: string): Promise<Candidate[]> {
+  const cs = await getAllCandidates0(address);
+  return cs.map((c) => {
+    return {
+      votes: c.votes,
+      index: c.index,
+      meta: stringToCandidateMeta(c.meta),
+    };
+  });
 }
 
 export async function getAllVoters(address: string): Promise<string[]> {
@@ -186,4 +208,43 @@ export async function getAllVoters(address: string): Promise<string[]> {
   );
   const voters: string[] = await voteContract.allVotes();
   return voters.map((voter) => ethers.getAddress(voter));
+}
+
+export async function getVoteMeta(address: string): Promise<VoteMeta> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider
+  );
+  const metaStr: string = await voteContract.meta();
+  return stringToVoteMeta(metaStr);
+}
+
+export async function getVoteFullInfo(address: string): Promise<Vote> {
+  const voteMeta = await getVoteMeta(address);
+  const times = await getVoteTime(address);
+  const candidates = await getAllCandidates(address);
+  const voters = await getAllVoters(address);
+  return {
+    meta: voteMeta,
+    startTime: times.startTime,
+    endTime: times.endTime,
+    candidates: candidates,
+    voters: voters,
+  };
+}
+
+export async function isCommittedAction(
+  address: string,
+  userAddress: string
+): Promise<boolean> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider
+  );
+  const isCommitted = await voteContract.isCommitted(
+    ethers.getAddress(userAddress)
+  );
+  return isCommitted;
 }

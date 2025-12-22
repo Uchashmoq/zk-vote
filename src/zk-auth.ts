@@ -3,7 +3,7 @@ import type { BigNumberish } from "ethers";
 import * as snarkjs from "snarkjs";
 import { buildMimcSponge } from "circomlibjs";
 import * as wasmLoader from "./Verifier.js";
-//export type PromiseOrValue<T> = T;
+import { zkVoteAbi } from "../web/src/abi.js";
 
 const loadWebAssembly: any = (wasmLoader as any).default ?? wasmLoader;
 
@@ -16,14 +16,21 @@ export const ZERO_VALUE =
 
 export const LEVELS = 20;
 
-export function calculateHash(mimc, left, right) {
+export function calculateHash(mimc: any, left: any, right: any) {
   return BigInt(mimc.F.toString(mimc.multiHash([left, right])));
 }
 
 export function getVerifierWASM() {
   return loadWebAssembly().buffer;
 }
-export async function generateCommitment() {
+export interface Commitment {
+  nullifier: string;
+  secret: string;
+  commitment: any;
+  nullifierHash: any;
+}
+
+export async function generateCommitment(): Promise<Commitment> {
   const mimc = await buildMimcSponge();
   const secret = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
   const nullifier = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
@@ -138,11 +145,11 @@ export async function calculateMerkleRootAndPathFromEvents(
   };
 }
 
-export function convertCallData(calldata) {
+export function convertCallData(calldata: any) {
   const argv = calldata
     .replace(/["[\]\s]/g, "")
     .split(",")
-    .map((x) => BigInt(x).toString());
+    .map((x: any) => BigInt(x).toString());
 
   const a = [argv[0], argv[1]] as [BigNumberish, BigNumberish];
   const b = [
@@ -155,6 +162,30 @@ export function convertCallData(calldata) {
   return { a, b, c, input };
 }
 
+export async function calculateMerkleRootAndPathFromMethod(
+  mimc: any,
+  address: any,
+  provider: any,
+  levels: number,
+  element?: any
+) {
+  const zkVoteContract = new ethers.Contract(address, zkVoteAbi, provider);
+  const commitments: string[] = await zkVoteContract.allCommitments();
+  const { root, pathElements, pathIndices } = calculateMerkleRootAndPath(
+    mimc,
+    levels,
+    commitments,
+    element ?? commitments[commitments.length - 1]
+  );
+
+  return {
+    root,
+    pathElements,
+    pathIndices,
+    commitments,
+  };
+}
+
 export async function calculateMerkleRootAndZKProof(
   address: any,
   provider: any,
@@ -164,6 +195,43 @@ export async function calculateMerkleRootAndZKProof(
 ) {
   const mimc = await buildMimcSponge();
   const rootAndPath = await calculateMerkleRootAndPathFromEvents(
+    mimc,
+    address,
+    provider,
+    levels,
+    commitment.commitment
+  );
+  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+    {
+      nullifier: commitment.nullifier,
+      secret: commitment.secret,
+      pathElements: rootAndPath.pathElements,
+      pathIndices: rootAndPath.pathIndices,
+    },
+    getVerifierWASM(),
+    zkey
+  );
+  const cd = convertCallData(
+    await snarkjs.groth16.exportSolidityCallData(proof, publicSignals)
+  );
+  return {
+    nullifierHash: publicSignals[0],
+    root: publicSignals[1],
+    proof_a: cd.a,
+    proof_b: cd.b,
+    proof_c: cd.c,
+  };
+}
+
+export async function calculateMerkleRootAndZKProof1(
+  address: any,
+  provider: any,
+  levels: number,
+  commitment: any,
+  zkey: any
+) {
+  const mimc = await buildMimcSponge();
+  const rootAndPath = await calculateMerkleRootAndPathFromMethod(
     mimc,
     address,
     provider,

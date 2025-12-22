@@ -14,10 +14,36 @@ import {
   calculateMerkleRootAndPathFromEvents,
   LEVELS,
   calculateMerkleRootAndZKProof,
+  calculateMerkleRootAndZKProof1,
 } from "../src/zk-auth.js";
 
 const { createCode, abi } = mimcSpongecontract;
 const bytecode = createCode("mimcsponge", 220);
+export interface Commitment {
+  nullifier: string;
+  secret: string;
+  commitment: any;
+  nullifierHash: any;
+}
+export function serializeCommitmentToBase64(data: Commitment): string {
+  const json = JSON.stringify(data, (key, value) =>
+    typeof value === "bigint" ? value.toString() : value
+  );
+
+  const bytes = new TextEncoder().encode(json);
+  const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
+    ""
+  );
+  return btoa(binString);
+}
+
+export function deserializeCommitmentFromBase64(base64: string): Commitment {
+  const binString = atob(base64);
+  const bytes = Uint8Array.from(binString, (char) => char.charCodeAt(0));
+  const json = new TextDecoder().decode(bytes);
+
+  return JSON.parse(json) as Commitment;
+}
 
 describe("ZkAuth", function () {
   let mimcContract: Contract, zkvoteContract: ZkAuth, voters: string[];
@@ -288,9 +314,6 @@ describe("ZkAuth", function () {
       proofData.proof_b,
       proofData.proof_c
     );
-
-    //expect(await zkvoteContract.nullifiers(nullifierHex)).to.equal(true);
-    //console.log("auth successfull");
   });
 
   it("multiple commits then multiple auth succeed", async function () {
@@ -368,6 +391,67 @@ describe("ZkAuth", function () {
       correctProof.proof_c
     );
     //expect(await zkvoteContract.nullifiers(nullifierHex)).to.equal(true);
+  });
+
+  it("calculateMerkleRootAndZKProof and calculateMerkleRootAndZKProof1 return the same result", async function () {
+    const signer = (await ethers.getSigners())[0];
+    const commitment = await generateCommitment();
+    const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
+    await zkvoteContract.connect(signer).commit(commitmentHex);
+
+    const levels = Number(await zkvoteContract.levels());
+
+    const proof1 = await calculateMerkleRootAndZKProof(
+      zkvoteContract.target,
+      ethers.provider,
+      levels,
+      commitment,
+      "build/Verifier.zkey"
+    );
+
+    const proof2 = await calculateMerkleRootAndZKProof1(
+      zkvoteContract.target,
+      ethers.provider,
+      levels,
+      commitment,
+      "build/Verifier.zkey"
+    );
+
+    expect(proof1.toString()).to.equal(proof2.toString());
+  });
+
+  it("deserilaize commitment then auth with valid proof succeeds", async function () {
+    const signer = (await ethers.getSigners())[0];
+    const commitment = await generateCommitment();
+
+    const commitmentb64 = serializeCommitmentToBase64(commitment);
+    console.log("commitment base64: ", commitmentb64);
+    const commitment1 = deserializeCommitmentFromBase64(commitmentb64);
+
+    expect(commitment.toString()).to.equal(commitment1.toString());
+
+    const commitmentHex = ethers.toBeHex(BigInt(commitment1.commitment), 32);
+    await zkvoteContract.connect(signer).commit(commitmentHex);
+    const levels = Number(await zkvoteContract.levels());
+
+    const proofData = await calculateMerkleRootAndZKProof(
+      zkvoteContract.target,
+      ethers.provider,
+      levels,
+      commitment1,
+      "build/Verifier.zkey"
+    );
+
+    const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifierHash), 32);
+    const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
+
+    await zkvoteContract.auth(
+      nullifierHex,
+      rootHex,
+      proofData.proof_a,
+      proofData.proof_b,
+      proofData.proof_c
+    );
   });
 
   after(async () => {

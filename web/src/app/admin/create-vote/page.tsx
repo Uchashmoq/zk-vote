@@ -10,7 +10,7 @@ import { usePublicClient, useWaitForTransactionReceipt, useWriteContract } from 
 import { zkVoteFactoryAddress } from "@/address"
 import { zkVoteFactoryAbi } from "@/abi"
 
-type Candidate = { name: string, imageUrl: string, imageCid: string, notes: string }
+type CandidateMeta = { name: string, imageUrl: string, imageCid: string, description: string }
 
 
 
@@ -22,10 +22,10 @@ export default function CreateVotePage() {
     const [imageUrl, setImageUrl] = useState<string>()
     const [imageCid, setImageCid] = useState<string>()
     const [activeTab, setActiveTab] = useState<"voters" | "candidates">("voters")
-    const [candidates, setCandidates] = useState<Candidate[]>([])
+    const [candidates, setCandidates] = useState<CandidateMeta[]>([])
 
     const [voterPicked, setVoterPicked] = useState<Record<number, boolean>>({})
-    const addCandidate = (candidate: Candidate) => {
+    const addCandidate = (candidate: CandidateMeta) => {
         setCandidates((prev) => {
             const next = prev.slice()
             next.push(candidate)
@@ -194,13 +194,15 @@ export default function CreateVotePage() {
                             className="w-full h-33.5 mt-2  rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
                         />
 
-                        <div className="flex flex-row">
+                        <div className="flex flex-row items-center">
+                            <span className="text-sm px-4 text-slate-200">From: </span>
                             <input
                                 type="datetime-local"
                                 value={start}
                                 onChange={(e) => setStart(e.target.value)}
                                 className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
                             />
+                            <span className="text-sm px-4 text-slate-200">to: </span>
                             <input
                                 type="datetime-local"
                                 value={end}
@@ -307,8 +309,8 @@ export default function CreateVotePage() {
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <p className="truncate text-sm font-semibold">{candidate.name}</p>
-                                            {candidate.notes && (
-                                                <p className="truncate text-xs text-slate-400">{candidate.notes}</p>
+                                            {candidate.description && (
+                                                <p className="truncate text-xs text-slate-400">{candidate.description}</p>
                                             )}
                                         </div>
                                         <button
@@ -361,9 +363,9 @@ export default function CreateVotePage() {
 function AddCandidateModal({
     addCandidate,
     onClose,
-}: { addCandidate: (candidate: Candidate) => void, onClose: () => void }) {
+}: { addCandidate: (candidate: CandidateMeta) => void, onClose: () => void }) {
     const [name, setName] = useState("")
-    const [notes, setNotes] = useState("")
+    const [description, setDeacription] = useState("")
     const [imageUrl, setImageUrl] = useState<string>("")
     const [imageCid, setImageCid] = useState<string>("")
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -387,7 +389,7 @@ function AddCandidateModal({
 
     const onSave = () => {
         if (!name.trim()) return
-        addCandidate({ name: name.trim(), imageUrl: imageUrl.trim(), imageCid: imageCid.trim(), notes: notes.trim() })
+        addCandidate({ name: name.trim(), imageUrl: imageUrl.trim(), imageCid: imageCid.trim(), description: description.trim() })
         onClose()
     }
 
@@ -449,9 +451,9 @@ function AddCandidateModal({
                         )}
                     </div>
                     <textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Notes"
+                        value={description}
+                        onChange={(e) => setDeacription(e.target.value)}
+                        placeholder="description"
                         rows={3}
                         className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/30"
                     />

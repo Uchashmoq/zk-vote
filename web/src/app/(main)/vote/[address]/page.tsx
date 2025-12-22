@@ -1,51 +1,207 @@
 'use client'
-
 import Image from 'next/image'
-import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { use, useEffect, useMemo, useState, useTransition } from 'react'
 import ProgressRing from '@/components/ProgressRing'
 import CandidateCard from '@/components/CandidateCard'
+import { getVoteFullInfo, isCommittedAction } from '@/actions'
+import { Vote } from '@/types'
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
+import { notFound } from 'next/navigation'
+import { Commitment, getMimc } from '@/lib/zk-auth'
+import { ethers } from 'ethers'
+import { zkVoteAbi } from '@/abi'
+import { getAddress } from 'viem'
 
-const voteCover = '/poll-cover.svg'
-const voteDescription =
-  'Most people know that fruits and vegetables are good for us. Both fruits and vegetables are high in dietary fibre as well as vitamins and minerals, and other bioactive plant compounds, including many with antioxidant properties such as polyphenols or beta-carotene. Fruits and vegetables contain, for example, vitamin A, B5, folate, C, E & K and are a rich source of calcium, iron, magnesium, manganese and potassium.2 The amounts and types of nutrients vary between different types of fruits and vegetables. Fruits and vegetables are also high in water, ranging from 75-90% of their weight. This fact explains their low energy content. Fruits and vegetables usually contain traces of fats and protein, with a few exceptions such as avocados, which have a high fat content. There is no evidence that organic fruits and vegetables are more nutritious compared to conventional varieties.3-5 Eating a lot of fruits and vegetables is strongly associated with a lower risk of premature deaths and non-communicable diseases; particularly, cardiovascular diseases, such as coronary heart disease and stroke, and certain cancers i.e., of the mouth, pharynx, larynx, oesophagus and colorectum.6-8 A meta-analysis looking at 95 prospective studies found that each additional 200 grams of fruits and vegetables per day was associated with an 8% lower risk of coronary heart disease, 16% lower risk of stroke, 8% lower risk of cardiovascular disease, 3% lower risk of cancer and 10% lower risk of premature death.9 Eating fruits and vegetables was associated with these reduced risks up to intakes of 800 grams per day except cancer, where no further reductions in risk were observed above 600 grams per day.'
 
-const mockCandidates = [
-  {
-    name: `Banana: The banana plant is the largest herbaceous flowering plant.[2] All the above-ground parts of a banana plant grow from a structure called a corm.[3] Plants are normally tall and fairly sturdy with a treelike appearance, but what appears to be a trunk is actually a pseudostem composed of multiple leaf-stalks (petioles). Bananas grow in a wide variety of soils, as long as it is at least 60 centimetres (2.0 ft) deep, has good drainage and is not compacted.[4] They are fast-growing plants, with a growth rate of up to 1.6 metres (5.2 ft) per day.[5]`,
-    votes: 38,
-    bio: `A banana is an elongated, edible fruit—botanically a berry[1]—produced by several kinds of large treelike herbaceous flowering plants in the genus Musa. In some countries, cooking bananas are called plantains, distinguishing them from dessert bananas. The fruit is variable in size, color and firmness, but is usually elongated and curved, with soft flesh rich in starch covered with a peel, which may have a variety of colors when ripe. It grows upward in clusters near the top of the plant. Almost all modern edible seedless (parthenocarp) cultivated bananas come from two wild species – Musa acuminata and Musa balbisiana, or their hybrids. Musa species are native to tropical Indomalaya and Australia; they were probably domesticated in New Guinea. They are grown in 135 countries, primarily for their fruit, and to a lesser extent to make banana paper and textiles, while some are grown as ornamental plants. The world's largest producers of bananas in 2022 were India and China, which together accounted for approximately 26% of total production. Bananas are eaten raw or cooked in recipes varying from curries to banana chips, fritters, fruit preserves, or simply baked or steamed. Worldwide, there is no sharp distinction between dessert "bananas" and cooking "plantains": this distinction works well enough in the Americas and Europe, but it breaks down in Southeast Asia where many more kinds of bananas are grown and eaten. The term "banana" is applied also to other members of the Musa genus, such as the scarlet banana (Musa coccinea), the pink banana (Musa velutina), and the Fe'i bananas. Members of the genus Ensete, such as the snow banana (Ensete glaucum) and the economically important false banana (Ensete ventricosum) of Africa are sometimes included. Both genera are in the banana family, Musaceae. `,
-    image: '/poll-cover.svg',
-  },
-  {
-    name: 'Apple',
-    votes: 24,
-    bio: 'Crisp and refreshing, perfect for pies, snacks, and a boost of fiber.',
-    image: '/poll-cover.svg',
-  },
-  {
-    name: 'Grape',
-    votes: 21,
-    bio: 'Juicy little flavor bombs, great fresh or as juice and wine.',
-    image: '/poll-cover.svg',
-  },
-  {
-    name: 'Mango (very juicy and sweet with a long name)',
-    votes: 12,
-    bio: 'Rich, fragrant, and tropical. Long names deserve love too—this one wraps to test truncation.',
-    image: '/poll-cover.svg',
-  },
-]
+function serializeCommitmentToBase64(data: Commitment): string {
+  const json = JSON.stringify(data, (key, value) =>
+    typeof value === "bigint" ? value.toString() : value
+  );
 
-export default function PollPage() {
-  const params = useParams<{ address: string }>()
-  const address = params?.address ?? ''
-  const sorted = [...mockCandidates].sort((a, b) => b.votes - a.votes)
-  const totalVotes = sorted.reduce((sum, c) => sum + c.votes, 0)
-  const leaderVotes = sorted[0]?.votes || 1
-  const goal = 120
-  const progressPercent = Math.min(100, Math.round((totalVotes / goal) * 100))
+  const bytes = new TextEncoder().encode(json);
+  const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
+    ""
+  );
+  return btoa(binString);
+}
+
+
+
+function shortenAddress(addr?: string) {
+  if (!addr) return '';
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+
+async function generateCommitment(mimc: any): Promise<Commitment> {
+  const secret = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
+  const nullifier = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
+
+  const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]));
+  const nullifierHash = mimc.F.toString(mimc.multiHash([nullifier]));
+  return {
+    nullifier: nullifier,
+    secret: secret,
+    commitment: commitment,
+    nullifierHash: nullifierHash,
+  };
+}
+
+
+export default function VotePage({
+  params,
+}: {
+  params: Promise<{ address: string }>
+}) {
+  const { address } = use(params)
+  const [vote, setVote] = useState<Vote>()
+  useEffect(() => {
+    getVoteFullInfo(address).then(setVote).catch(() => {
+      notFound()
+    })
+  }, [address])
+
   const [showFullDesc, setShowFullDesc] = useState(false)
+  const [progressPercent, setProgressPercent] = useState(0)
+  const { status, address: userAddress } = useAccount()
+
+
+  const start = vote ? Number(vote.startTime) : undefined
+  const end = vote ? Number(vote.endTime) : undefined
+
+  useEffect(() => {
+    if (start === undefined || end === undefined || end <= start) {
+      setProgressPercent(0)
+      return
+    }
+
+    const updateProgress = () => {
+      const nowSeconds = Math.floor(Date.now() / 1000)
+      const percent = Math.min(
+        100,
+        Math.max(0, Math.round(((nowSeconds - start) / (end - start)) * 100))
+      )
+      setProgressPercent(percent)
+    }
+
+    updateProgress()
+    const timer = setInterval(updateProgress, 1000)
+    return () => clearInterval(timer)
+  }, [start, end])
+
+  const sorted = useMemo(() => {
+    if (!vote) return []
+    return [...vote.candidates].sort((a, b) => b.votes - a.votes)
+  }, [vote])
+
+  const totalVotes = useMemo(
+    () => sorted.reduce((sum, c) => sum + c.votes, 0),
+    [sorted]
+  )
+
+  const [isCommitted, setIscommitted] = useState<boolean>()
+  useEffect(() => {
+    if (address && userAddress) {
+      isCommittedAction(address, userAddress).then(setIscommitted)
+    }
+  }, [address, userAddress])
+
+  const { writeContract, data: hash, isPending } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess, isError } =
+    useWaitForTransactionReceipt({ hash })
+  const [commitmentb64, setCommitmentb64] = useState<string>("")
+  const [pendingCommitmentb64, setPendingCommitmentb64] = useState<string | null>(null)
+  const [transactionDone, startTransition] = useTransition();
+
+  const [mimc, setMimc] = useState(null)
+  useEffect(() => {
+    getMimc().then(setMimc);
+  }, [])
+
+  useEffect(() => {
+    if (commitmentb64) downloadCommitment()
+  }, [commitmentb64])
+
+  useEffect(() => {
+    console.log("pending commitment base64: ", pendingCommitmentb64)
+    if (isSuccess && pendingCommitmentb64) {
+      setCommitmentb64(pendingCommitmentb64)
+      setPendingCommitmentb64(null)
+    }
+  }, [isSuccess, pendingCommitmentb64])
+
+  function downloadCommitment() {
+    const blob = new Blob([commitmentb64], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const shortenedAddress = shortenAddress(address);
+    const shortenedUserAddress = shortenAddress(userAddress);
+    link.download = `commitment-${shortenedAddress}-${shortenedUserAddress}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function onCommit() {
+    if (!mimc) return
+    startTransition(() => {
+      void (async () => {
+        const commitment = await generateCommitment(mimc);
+        const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
+        setPendingCommitmentb64(serializeCommitmentToBase64(commitment));
+        writeContract({
+          address: getAddress(address),
+          abi: zkVoteAbi,
+          functionName: 'commit',
+          args: [commitmentHex],
+        })
+      })();
+    });
+  }
+
+
+  const voteCover = vote?.meta.imageUrl || '/poll-cover.svg'
+  const voteTitle = vote?.meta.title || ''
+  const voteDescription = vote?.meta.description || ''
+  const dateRange =
+    start && end
+      ? `${new Date(start * 1000).toLocaleString()} ~ ${new Date(end * 1000).toLocaleString()}`
+      : ''
+
+  if (!vote) {
+    return (
+      <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+        <p className="text-slate-300">Loading...</p>
+      </main>
+    )
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  const isBeforeStart = start !== undefined && nowSeconds < start
+  const isAfterEnd = end !== undefined && nowSeconds >= end
+  const hasVotingRight = userAddress
+    ? vote.voters.some(
+      (voter) => voter.toLowerCase() === userAddress.toLowerCase()
+    )
+    : false
+  const commitTooltip =
+    status !== 'connected' || !userAddress
+      ? 'Connect your wallet first'
+      : isBeforeStart
+        ? 'Voting has not started yet'
+        : isAfterEnd
+          ? 'Voting has ended'
+          : !hasVotingRight
+            ? 'You do not have the right to vote'
+            : isCommitted
+              ? 'You have already committed'
+              : undefined
+  const isCommitDisabled = Boolean(commitTooltip)
+
+  const isTxLoading = isPending || isConfirming
+  const isMimcLoading = mimc === null
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
@@ -62,10 +218,10 @@ export default function PollPage() {
             />
             <div className="min-w-0 space-y-1">
               <h1 className="truncate text-xl font-semibold leading-tight text-slate-50 sm:text-2xl">
-                What is your favorite fruit? The genus Musa was created by Carl Linnaeus in 1753.[18] The name may be derived from Antonius Musa, physician to the Emperor Augustus, or Linnaeus may have adapted the Arabic word for banana, mauz.[19] The ultimate origin of musa may be in the Trans–New Guinea languages, which have words similar to "#muku"; from there the name was borrowed into the Austronesian languages and across Asia, accompanying the cultivation of the banana as it was brought to new areas, via the Dravidian languages of India, into Arabic as a Wanderwort.[20] The word "banana" is thought to be of West African origin, possibly from the Wolof word banaana, and passed into English via Spanish or Portuguese.[21]
+                {voteTitle}
               </h1>
               <p className="truncate text-xs text-slate-300">Contract: {address}</p>
-              <p className="text-xs text-slate-400">10/10~10/12</p>
+              <p className="text-xs text-slate-400">{dateRange}</p>
             </div>
           </div>
           <div className="flex-shrink-0 w-18 h-18">
@@ -88,14 +244,29 @@ export default function PollPage() {
         <div className="grid gap-4">
           {sorted.map((candidate) => (
             <CandidateCard
-              key={candidate.name}
+              key={candidate.meta.name}
               candidate={candidate}
               totalVotes={totalVotes}
-              onVote={(name) => console.log('Vote for', name)}
+              vote={vote}
             />
           ))}
         </div>
       </section>
+      <button
+        type="button"
+        disabled={isCommitDisabled || isMimcLoading || isTxLoading}
+        onClick={onCommit}
+        title={commitTooltip}
+        className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isMimcLoading ? (
+          <span className="loading loading-dots loading-lg"></span>
+        ) : isTxLoading ? (
+          <span className="loading loading-dots loading-lg"></span>
+        ) : (
+          'Commit'
+        )}
+      </button>
     </main>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 import { Search } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Connector, useAccount, useChainId, useChains, useConnect, useDisconnect } from 'wagmi'
 
@@ -72,7 +73,8 @@ function Brand() {
   const chains = useChains()
   const currentChain = chains.find(c => c.id === chainId)
   return (
-    <div className="flex items-center gap-3">
+    <Link className="flex items-center gap-3" href={'/'}>
+
       <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-500 text-sm font-bold text-slate-900 shadow-lg shadow-indigo-500/20">
         ZK
       </div>
@@ -81,7 +83,7 @@ function Brand() {
 
         {currentChain && <div className="text-xs text-slate-400">{currentChain.name}</div>}
       </div>
-    </div>
+    </Link>
   )
 }
 

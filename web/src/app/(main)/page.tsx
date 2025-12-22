@@ -43,6 +43,8 @@ export default function HomePage() {
     queryVotes(committedOnly ? address : undefined, showVerified, hideNotStarted, hideEnded).then(setVotes)
   }, [showVerified, address, hideNotStarted, hideEnded, committedOnly])
 
+
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
       <div className="mb-6 flex flex-row gap-3 justify-between">

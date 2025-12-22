@@ -5,30 +5,14 @@ import Link from 'next/link'
 import ProgressRing from './ProgressRing'
 import { useEffect, useState } from 'react'
 import { getAllCandidates, getVoteTime } from '@/actions'
+import { Candidate, stringToVoteMeta, VoteMeta } from '@/types'
 
-type Candidate = {
-  votes: number
-  meta: string
-}
 
-const pollCover = '/poll-cover.svg'
+
 
 export default function VoteCard({ address, meta }: { address: string, meta: string }) {
-  type VoteMeta = { title: string, description: string, imageUrl: string, imageCid: string }
-  const fallbackMeta: VoteMeta = { title: '???', description: '???', imageUrl: '???', imageCid: '???' }
-  const voteMeta: VoteMeta = (() => {
-    try {
-      const parsed = JSON.parse(meta) as Partial<VoteMeta>
-      return {
-        title: typeof parsed?.title === 'string' ? parsed.title : fallbackMeta.title,
-        description: typeof parsed?.description === 'string' ? parsed.description : fallbackMeta.description,
-        imageUrl: typeof parsed?.imageUrl === 'string' ? parsed.imageUrl : fallbackMeta.imageUrl,
-        imageCid: typeof parsed?.imageCid === 'string' ? parsed.imageCid : fallbackMeta.imageCid,
-      }
-    } catch {
-      return fallbackMeta
-    }
-  })();
+
+  const voteMeta = stringToVoteMeta(meta)
   const [voteTime, setVoteTime] = useState<{ startTime: BigInt; endTime: BigInt }>()
   const [candidates, setCandidates] = useState<Candidate[]>([])
 
@@ -40,31 +24,9 @@ export default function VoteCard({ address, meta }: { address: string, meta: str
     getAllCandidates(address).then(setCandidates)
   }, [address])
 
-  const parsedCandidates = candidates.map((candidate, index) => {
-    const fallbackName = `Candidate ${index + 1}`
-    const fallbackBio = ''
-    try {
-      const parsed = JSON.parse(candidate.meta) as Partial<{
-        name: string
-        notes: string
-      }>
-      return {
-        ...candidate,
-        name:
-          typeof parsed?.name === 'string' && parsed.name.trim()
-            ? parsed.name
-            : fallbackName,
-        bio:
-          typeof parsed?.notes === 'string' && parsed.notes.trim()
-            ? parsed.notes
-            : fallbackBio,
-      }
-    } catch {
-      return { ...candidate, name: fallbackName, bio: fallbackBio }
-    }
-  })
 
-  const sorted = [...parsedCandidates].sort((a, b) => b.votes - a.votes)
+
+  const sorted = [...candidates].sort((a, b) => b.votes - a.votes)
   const totalVotes = sorted.reduce((sum, c) => sum + c.votes, 0)
 
   const start = voteTime ? Number(voteTime.startTime) : undefined
@@ -136,11 +98,11 @@ export default function VoteCard({ address, meta }: { address: string, meta: str
               totalVotes === 0 ? '0%' : `${Math.max(6, (candidate.votes / totalVotes) * 100)}%`
             return (
               <div
-                key={candidate.name}
+                key={candidate.meta.name}
                 className="flex items-center gap-3 rounded-xl bg-white/0 px-2 py-1 transition hover:bg-white/5"
               >
                 <div className="w-28 min-w-0 truncate text-sm font-medium text-slate-100">
-                  {candidate.name}
+                  {candidate.meta.name}
                 </div>
                 <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
                   <div
