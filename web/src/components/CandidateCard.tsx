@@ -2,6 +2,7 @@
 
 import { zkVoteAbi } from '@/abi'
 import { getAllCommitments } from '@/actions'
+import { getValidImageUrl } from '@/lib/utils'
 import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, Commitment } from '@/lib/zk-auth-client'
 import { Candidate, Vote } from '@/types'
 import { ethers } from 'ethers'
@@ -86,10 +87,9 @@ export default function CandidateCard({
   }, [isConfirming, isSuccess, isError])
 
   function handleDialogVote() {
+    setDialogState('loading')
     startTransition(async () => {
       try {
-        setDialogState('loading')
-
         const commitment = deserializeCommitmentFromBase64(commitmentInput.trim())
         const commitments = await getAllCommitments(address)
 
@@ -121,7 +121,6 @@ export default function CandidateCard({
           args: args
         })
       } catch (error) {
-        console.error('failed to vote', error)
         const message = error instanceof Error ? error.message : 'Failed to vote'
         alert(message)
         setDialogState('idle')
@@ -144,7 +143,7 @@ export default function CandidateCard({
       <div className="flex items-start gap-4">
         <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-slate-800">
           <Image
-            src={candidate.meta.imageUrl}
+            src={getValidImageUrl(candidate.meta.imageUrl)}
             alt={candidate.meta.name}
             fill
             sizes="56px"

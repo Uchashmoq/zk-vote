@@ -11,10 +11,7 @@ import { Commitment, generateCommitment, serializeCommitmentToBase64 } from '@/l
 import { ethers } from 'ethers'
 import { zkVoteAbi } from '@/abi'
 import { getAddress } from 'viem'
-
-
-
-
+import { getValidImageUrl } from '@/lib/utils'
 
 function shortenAddress(addr?: string) {
   if (!addr) return '';
@@ -80,11 +77,12 @@ export default function VotePage({
     }
   }, [address, userAddress])
 
-  const { writeContract, data: hash, isPending } = useWriteContract()
+  const { writeContractAsync, data: hash, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({ hash })
   const [commitmentb64, setCommitmentb64] = useState<string>("")
   const [pendingCommitmentb64, setPendingCommitmentb64] = useState<string | null>(null)
-  const [transactionDone, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  //const [buttonLoading, setButtonLoading] = useState(true);
 
 
   useEffect(() => {
@@ -96,6 +94,7 @@ export default function VotePage({
     if (isSuccess && pendingCommitmentb64) {
       setCommitmentb64(pendingCommitmentb64)
       setPendingCommitmentb64(null)
+      alert("Commit successfully!")
     }
   }, [isSuccess, pendingCommitmentb64])
 
@@ -114,19 +113,24 @@ export default function VotePage({
   }
 
   function onCommit() {
-    startTransition(() => {
-      void (async () => {
-        const commitment = await generateCommitment();
-        const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
-        setPendingCommitmentb64(serializeCommitmentToBase64(commitment));
-        writeContract({
-          address: getAddress(address),
-          abi: zkVoteAbi,
-          functionName: 'commit',
-          args: [commitmentHex],
-        })
-      })();
-    });
+    startTransition(
+      async () => {
+        try {
+          const commitment = await generateCommitment();
+          const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
+          setPendingCommitmentb64(serializeCommitmentToBase64(commitment));
+          await writeContractAsync({
+            address: getAddress(address),
+            abi: zkVoteAbi,
+            functionName: 'commit',
+            args: [commitmentHex],
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to commit'
+          alert(message)
+        }
+      }
+    );
   }
 
 
@@ -177,7 +181,8 @@ export default function VotePage({
         <div className='flex w-full items-center justify-between gap-4 sm:gap-6'>
           <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
             <Image
-              src={voteCover}
+              // 
+              src={getValidImageUrl(voteCover)}
               alt="Poll cover"
               width={64}
               height={64}
