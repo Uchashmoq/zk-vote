@@ -81,8 +81,7 @@ export default function VotePage({
   }, [address, userAddress])
 
   const { writeContract, data: hash, isPending } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess, isError } =
-    useWaitForTransactionReceipt({ hash })
+  const { isLoading: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({ hash })
   const [commitmentb64, setCommitmentb64] = useState<string>("")
   const [pendingCommitmentb64, setPendingCommitmentb64] = useState<string | null>(null)
   const [transactionDone, startTransition] = useTransition();
@@ -217,6 +216,7 @@ export default function VotePage({
               candidate={candidate}
               totalVotes={totalVotes}
               vote={vote}
+              address={address}
             />
           ))}
         </div>

@@ -245,3 +245,13 @@ export async function isCommittedAction(
   );
   return isCommitted;
 }
+
+export async function getAllCommitments(address: string): Promise<string[]> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider
+  );
+  const allCommitments = await voteContract.allCommitments();
+  return allCommitments;
+}

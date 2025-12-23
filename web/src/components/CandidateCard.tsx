@@ -1,10 +1,14 @@
 'use client'
 
-import { Commitment } from '@/lib/zk-auth-client'
+import { zkVoteAbi } from '@/abi'
+import { getAllCommitments } from '@/actions'
+import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, Commitment } from '@/lib/zk-auth-client'
 import { Candidate, Vote } from '@/types'
+import { ethers } from 'ethers'
 import Image from 'next/image'
-import { useState, type ChangeEvent } from 'react'
-import { useAccount } from 'wagmi'
+import { useEffect, useState, useTransition, type ChangeEvent } from 'react'
+import { getAddress } from 'viem'
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 
 function deserializeCommitmentFromBase64(base64: string): Commitment {
   const binString = atob(base64)
@@ -19,14 +23,17 @@ export default function CandidateCard({
   candidate,
   totalVotes,
   vote,
+  address,
 }: {
   candidate: Candidate
   totalVotes: number
   vote: Vote
+  address: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [commitmentInput, setCommitmentInput] = useState('')
+  const [dialogState, setDialogState] = useState<'idle' | 'loading' | 'success'>('idle')
   const percent =
     totalVotes === 0 ? 0 : Math.round((candidate.votes / Math.max(totalVotes, 1)) * 100)
   const barWidth = totalVotes === 0 ? '0%' : `${Math.max(6, (candidate.votes / totalVotes) * 100)}%`
@@ -47,6 +54,7 @@ export default function CandidateCard({
 
 
   function onVote() {
+    setDialogState('idle')
     setShowDialog(true)
   }
 
@@ -62,20 +70,73 @@ export default function CandidateCard({
     reader.readAsText(file)
   }
 
-  function handleDialogVote() {
-    try {
-      // Validate that the provided base64 parses into a commitment; no submission wired yet.
-      deserializeCommitmentFromBase64(commitmentInput.trim())
-      setShowDialog(false)
-    } catch (error) {
-      console.error('Invalid commitment base64', error)
+  const [, startTransition] = useTransition()
+  const { writeContractAsync, data: hash } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({ hash })
+
+  useEffect(() => {
+    if (isConfirming) {
+      setDialogState('loading')
+    } else if (isSuccess) {
+      setDialogState('success')
+    } else if (isError) {
+      alert('Transaction failed or was cancelled')
+      setDialogState('idle')
     }
+  }, [isConfirming, isSuccess, isError])
+
+  function handleDialogVote() {
+    startTransition(async () => {
+      try {
+        setDialogState('loading')
+
+        const commitment = deserializeCommitmentFromBase64(commitmentInput.trim())
+        const commitments = await getAllCommitments(address)
+
+        const rootAndPath = await calculateMerkleRootAndPath(
+          commitments,
+          commitment.commitment
+        );
+
+        const proofData = await calculateMerkleRootAndZKProof(
+          rootAndPath,
+          commitment
+        );
+        const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
+        const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
+
+        const args = [
+          BigInt(candidate.index),
+          nullifierHex,
+          rootHex,
+          proofData.proof_a,
+          proofData.proof_b,
+          proofData.proof_c
+        ]
+
+        await writeContractAsync({
+          abi: zkVoteAbi,
+          address: getAddress(address),
+          functionName: "vote",
+          args: args
+        })
+      } catch (error) {
+        console.error('failed to vote', error)
+        const message = error instanceof Error ? error.message : 'Failed to vote'
+        alert(message)
+        setDialogState('idle')
+      }
+    })
   }
 
   function handleDialogCancel() {
     setShowDialog(false)
     setCommitmentInput('')
+    setDialogState('idle')
+  }
 
+  function handleSuccessConfirm() {
+    handleDialogCancel()
   }
 
   return (
@@ -135,15 +196,8 @@ export default function CandidateCard({
         <span className="tabular-nums">{percent}%</span>
       </div>
       {showDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onMouseDown={(e) => {
-            // 只要点到遮罩，就关闭
-            if (e.target === e.currentTarget) handleDialogCancel()
-          }}
-        >
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/50"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/50">
             <h4 className="text-lg font-semibold text-slate-50">Submit Commitment</h4>
             <p className="mt-1 text-sm text-slate-300">
               Paste your commitment (base64). You can also select a file containing the base64
@@ -162,8 +216,9 @@ export default function CandidateCard({
                   accept="text/plain"
                   className="hidden"
                   onChange={onFileChange}
+                  disabled={dialogState !== 'idle'}
                 />
-                <span className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1.5">
+                <span className={`rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1.5 ${dialogState !== 'idle' ? 'pointer-events-none opacity-60' : ''}`}>
                   Choose base64 file
                 </span>
               </label>
@@ -172,16 +227,37 @@ export default function CandidateCard({
               <button
                 onClick={handleDialogCancel}
                 className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-white/30 hover:text-white"
+                disabled={dialogState !== 'idle'}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDialogVote}
                 className="rounded-lg bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-indigo-500/30 transition duration-150 hover:brightness-110 active:translate-y-[1px]"
+                disabled={dialogState !== 'idle'}
               >
                 Vote
               </button>
             </div>
+            {dialogState !== 'idle' && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-2xl bg-slate-900/85">
+                {dialogState === 'loading' ? (
+                  <span className="loading loading-spinner loading-xl text-slate-100"></span>
+                ) : (
+                  <>
+                    <p className="text-center text-lg font-semibold text-slate-50">
+                      You successfully voted for {candidate.meta.name}.
+                    </p>
+                    <button
+                      onClick={handleSuccessConfirm}
+                      className="rounded-lg bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-indigo-500/30 transition duration-150 hover:brightness-110 active:translate-y-[1px]"
+                    >
+                      Confirm
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
