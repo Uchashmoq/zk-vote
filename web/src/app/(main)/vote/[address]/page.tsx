@@ -7,44 +7,18 @@ import { getVoteFullInfo, isCommittedAction } from '@/actions'
 import { Vote } from '@/types'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { notFound } from 'next/navigation'
-import { Commitment, getMimc } from '@/lib/zk-auth'
+import { Commitment, generateCommitment, serializeCommitmentToBase64 } from '@/lib/zk-auth-client'
 import { ethers } from 'ethers'
 import { zkVoteAbi } from '@/abi'
 import { getAddress } from 'viem'
 
 
-function serializeCommitmentToBase64(data: Commitment): string {
-  const json = JSON.stringify(data, (key, value) =>
-    typeof value === "bigint" ? value.toString() : value
-  );
-
-  const bytes = new TextEncoder().encode(json);
-  const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
-    ""
-  );
-  return btoa(binString);
-}
 
 
 
 function shortenAddress(addr?: string) {
   if (!addr) return '';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-
-async function generateCommitment(mimc: any): Promise<Commitment> {
-  const secret = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
-  const nullifier = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
-
-  const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]));
-  const nullifierHash = mimc.F.toString(mimc.multiHash([nullifier]));
-  return {
-    nullifier: nullifier,
-    secret: secret,
-    commitment: commitment,
-    nullifierHash: nullifierHash,
-  };
 }
 
 
@@ -113,10 +87,6 @@ export default function VotePage({
   const [pendingCommitmentb64, setPendingCommitmentb64] = useState<string | null>(null)
   const [transactionDone, startTransition] = useTransition();
 
-  const [mimc, setMimc] = useState(null)
-  useEffect(() => {
-    getMimc().then(setMimc);
-  }, [])
 
   useEffect(() => {
     if (commitmentb64) downloadCommitment()
@@ -145,10 +115,9 @@ export default function VotePage({
   }
 
   function onCommit() {
-    if (!mimc) return
     startTransition(() => {
       void (async () => {
-        const commitment = await generateCommitment(mimc);
+        const commitment = await generateCommitment();
         const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
         setPendingCommitmentb64(serializeCommitmentToBase64(commitment));
         writeContract({
@@ -201,7 +170,7 @@ export default function VotePage({
   const isCommitDisabled = Boolean(commitTooltip)
 
   const isTxLoading = isPending || isConfirming
-  const isMimcLoading = mimc === null
+
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
@@ -254,14 +223,12 @@ export default function VotePage({
       </section>
       <button
         type="button"
-        disabled={isCommitDisabled || isMimcLoading || isTxLoading}
+        disabled={isCommitDisabled || isTxLoading}
         onClick={onCommit}
         title={commitTooltip}
         className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isMimcLoading ? (
-          <span className="loading loading-dots loading-lg"></span>
-        ) : isTxLoading ? (
+        {isTxLoading ? (
           <span className="loading loading-dots loading-lg"></span>
         ) : (
           'Commit'

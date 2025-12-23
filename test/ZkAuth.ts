@@ -17,6 +17,12 @@ import {
   calculateMerkleRootAndZKProof1,
 } from "../src/zk-auth.js";
 
+import {
+  generateCommitment as generateCommitment1,
+  calculateMerkleRootAndPath as calculateMerkleRootAndPath1,
+  calculateMerkleRootAndZKProof as calculateMerkleRootAndZKProof1c,
+} from "../src/zk-auth-client.js";
+
 const { createCode, abi } = mimcSpongecontract;
 const bytecode = createCode("mimcsponge", 220);
 export interface Commitment {
@@ -452,6 +458,44 @@ describe("ZkAuth", function () {
       proofData.proof_b,
       proofData.proof_c
     );
+  });
+
+  it("test generate commitment and proof in client", async () => {
+    try {
+      const signer = (await ethers.getSigners())[0];
+      const commitment = await generateCommitment1();
+      const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
+      await zkvoteContract.connect(signer).commit(commitmentHex);
+      const commitments = await zkvoteContract.allCommitments();
+      //console.log("commitment:", commitment);
+      //console.log("commitmens: ", commitments);
+      const rootAndPath = await calculateMerkleRootAndPath1(
+        commitments,
+        commitment.commitment
+      );
+
+      const fakeCommitment = await generateCommitment1();
+      //console.log("root and path: ", rootAndPath);
+      const proofData = await calculateMerkleRootAndZKProof1c(
+        rootAndPath,
+        fakeCommitment
+      );
+      //console.log("proof data: ", proofData);
+
+      const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
+      const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
+
+      await zkvoteContract.auth(
+        nullifierHex,
+        rootHex,
+        proofData.proof_a,
+        proofData.proof_b,
+        proofData.proof_c
+      );
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
   });
 
   after(async () => {

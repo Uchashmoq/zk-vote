@@ -1,14 +1,13 @@
 import { ethers } from "ethers";
 import type { BigNumberish } from "ethers";
 import * as snarkjs from "snarkjs";
-import * as wasmLoader from "./Verifier";
+import * as wasmLoader from "./Verifier.js";
 import { buildMimcSponge } from "circomlibjs";
 
 export interface Commitment {
   nullifier: string;
   secret: string;
   commitment: any;
-  nullifierHash: any;
 }
 
 const loadWebAssembly: any = (wasmLoader as any).default ?? wasmLoader;
@@ -67,7 +66,7 @@ let verifierZkeyPromise: Promise<Uint8Array> | null = null;
 async function getVerifierZkey(): Promise<Uint8Array> {
   if (cachedVerifierZkey) return cachedVerifierZkey;
   if (verifierZkeyPromise) return verifierZkeyPromise;
-  verifierZkeyPromise = fetch("/Verifier.zkey")
+  verifierZkeyPromise = fetch("http://localhost:3000/Verifier.zkey")
     .then((res) => {
       if (!res.ok) throw new Error("Failed to fetch Verifier.zkey");
       return res.arrayBuffer();
@@ -81,21 +80,6 @@ async function getVerifierZkey(): Promise<Uint8Array> {
       throw err;
     });
   return verifierZkeyPromise;
-}
-
-export async function generateCommitment(): Promise<Commitment> {
-  const mimc = await getMimc();
-  const secret = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
-  const nullifier = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
-
-  const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]));
-  const nullifierHash = mimc.F.toString(mimc.multiHash([nullifier]));
-  return {
-    nullifier: nullifier,
-    secret: secret,
-    commitment: commitment,
-    nullifierHash: nullifierHash,
-  };
 }
 
 export async function calculateMerkleRootAndPath(
@@ -177,6 +161,20 @@ export async function calculateMerkleRootAndZKProof(
     proof_a: cd.a,
     proof_b: cd.b,
     proof_c: cd.c,
+  };
+}
+
+export async function generateCommitment(): Promise<Commitment> {
+  const mimc = await getMimc();
+  const secret = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
+  const nullifier = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
+
+  const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]));
+
+  return {
+    nullifier: nullifier,
+    secret: secret,
+    commitment: commitment,
   };
 }
 

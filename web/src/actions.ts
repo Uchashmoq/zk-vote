@@ -16,8 +16,6 @@ import {
   Vote,
   VoteMeta,
 } from "./types";
-import { notFound } from "next/navigation";
-import { Commitment } from "./lib/zk-auth";
 
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL!;
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
@@ -181,7 +179,6 @@ async function getAllCandidates0(
   const candidates: { votes: bigint; meta: string }[] =
     await voteContract.allCandidates();
 
-  //console.log(candidates[0].meta);
   return candidates.map((candidate, i) => ({
     index: i,
     votes: Number(candidate.votes),

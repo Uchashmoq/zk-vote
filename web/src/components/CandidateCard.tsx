@@ -1,6 +1,6 @@
 'use client'
 
-import { Commitment } from '@/lib/zk-auth'
+import { Commitment } from '@/lib/zk-auth-client'
 import { Candidate, Vote } from '@/types'
 import Image from 'next/image'
 import { useState, type ChangeEvent } from 'react'
