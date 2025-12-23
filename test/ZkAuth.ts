@@ -467,21 +467,16 @@ describe("ZkAuth", function () {
       const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
       await zkvoteContract.connect(signer).commit(commitmentHex);
       const commitments = await zkvoteContract.allCommitments();
-      //console.log("commitment:", commitment);
-      //console.log("commitmens: ", commitments);
+
       const rootAndPath = await calculateMerkleRootAndPath1(
         commitments,
         commitment.commitment
       );
 
-      const fakeCommitment = await generateCommitment1();
-      //console.log("root and path: ", rootAndPath);
       const proofData = await calculateMerkleRootAndZKProof1c(
         rootAndPath,
-        fakeCommitment
+        commitment
       );
-      //console.log("proof data: ", proofData);
-
       const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
       const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
 
