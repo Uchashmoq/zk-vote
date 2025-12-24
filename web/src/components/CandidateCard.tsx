@@ -2,21 +2,16 @@
 
 import { zkVoteAbi } from '@/abi'
 import { getAllCommitments } from '@/actions'
-import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, Commitment } from '@/lib/zk-auth-client'
+import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, Commitment, deserializeSecretAndNullifierFromBase64 } from '@/lib/zk-auth-client'
 import { Candidate, Vote } from '@/types'
 import { ethers } from 'ethers'
 import Image from 'next/image'
 import { useEffect, useState, useTransition, type ChangeEvent } from 'react'
 import { getAddress } from 'viem'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
+import { toast } from 'react-hot-toast'
 
-function deserializeCommitmentFromBase64(base64: string): Commitment {
-  const binString = atob(base64)
-  const bytes = Uint8Array.from(binString, (char) => char.charCodeAt(0))
-  const json = new TextDecoder().decode(bytes)
 
-  return JSON.parse(json) as Commitment
-}
 
 
 export default function CandidateCard({
@@ -71,8 +66,15 @@ export default function CandidateCard({
   }
 
   const [, startTransition] = useTransition()
-  const { writeContractAsync, data: hash } = useWriteContract();
+  const { writeContractAsync, data: hash, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({ hash })
+
+  useEffect(() => {
+    if (error) {
+      const userFriendlyMessage = (error as { shortMessage?: string })?.shortMessage || "Something went wrong while voting. Please try again."
+      toast.error(userFriendlyMessage)
+    }
+  }, [error]);
 
   useEffect(() => {
     if (isConfirming) {
@@ -80,7 +82,7 @@ export default function CandidateCard({
     } else if (isSuccess) {
       setDialogState('success')
     } else if (isError) {
-      alert('Transaction failed or was cancelled')
+      toast.error('Transaction failed or was cancelled')
       setDialogState('idle')
     }
   }, [isConfirming, isSuccess, isError])
@@ -88,42 +90,39 @@ export default function CandidateCard({
   function handleDialogVote() {
     setDialogState('loading')
     startTransition(async () => {
-      try {
-        const commitment = deserializeCommitmentFromBase64(commitmentInput.trim())
-        const commitments = await getAllCommitments(address)
 
-        const rootAndPath = await calculateMerkleRootAndPath(
-          commitments,
-          commitment.commitment
-        );
+      const commitment = deserializeSecretAndNullifierFromBase64(commitmentInput.trim())
+      const commitments = await getAllCommitments(address)
 
-        const proofData = await calculateMerkleRootAndZKProof(
-          rootAndPath,
-          commitment
-        );
-        const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
-        const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
+      const rootAndPath = await calculateMerkleRootAndPath(
+        commitments,
+        commitment.commitment
+      );
 
-        const args = [
-          BigInt(candidate.index),
-          nullifierHex,
-          rootHex,
-          proofData.proof_a,
-          proofData.proof_b,
-          proofData.proof_c
-        ]
+      const proofData = await calculateMerkleRootAndZKProof(
+        rootAndPath,
+        commitment
+      );
+      const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
+      const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
 
-        await writeContractAsync({
-          abi: zkVoteAbi,
-          address: getAddress(address),
-          functionName: "vote",
-          args: args
-        })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to vote'
-        alert(message)
-        setDialogState('idle')
-      }
+      const args = [
+        BigInt(candidate.index),
+        nullifierHex,
+        rootHex,
+        proofData.proof_a,
+        proofData.proof_b,
+        proofData.proof_c
+      ]
+
+      writeContractAsync({
+        abi: zkVoteAbi,
+        address: getAddress(address),
+        functionName: "vote",
+        args: args
+      }).catch(() => setDialogState("idle"))
+
+
     })
   }
 

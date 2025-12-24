@@ -66,7 +66,7 @@ export default function VoteCard({ address, meta }: { address: string, meta: str
         <div className="flex justify-items-normal gap-4 sm:gap-6">
           <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-800">
             <Image
-              src={voteMeta.imageUrl}
+              src={voteMeta.imageUrl || '/imgNotfound.png'}
               alt="Poll cover"
               fill
               sizes="64px"

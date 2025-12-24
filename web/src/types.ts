@@ -71,7 +71,7 @@ export function stringToVoteMeta(meta: string): VoteMeta {
   const fallbackMeta: VoteMeta = {
     title: "???",
     description: "",
-    imageUrl: "/imgNotfound.png",
+    imageUrl: "",
     imageCid: "",
     original: meta,
   };

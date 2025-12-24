@@ -49,7 +49,7 @@ export default function CreateVotePage() {
     const [showVoterPicker, setShowVoterPicker] = useState(false)
     const [showAddCandidateModal, setShowCandidateModal] = useState(false)
     const publicClient = usePublicClient()
-    const { writeContractAsync, data: hash, isPending, error } = useWriteContract()
+    const { writeContractAsync, data: hash, error } = useWriteContract()
     const { isSuccess, isError } = useWaitForTransactionReceipt({ hash });
     const [buttonLoading, setButtonLoading] = useState(false)
 

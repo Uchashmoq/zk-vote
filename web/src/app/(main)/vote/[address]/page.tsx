@@ -7,15 +7,17 @@ import { getVoteFullInfo, isCommittedAction } from '@/actions'
 import { Vote } from '@/types'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { notFound } from 'next/navigation'
-import { Commitment, generateCommitment, serializeCommitmentToBase64 } from '@/lib/zk-auth-client'
+import { Commitment, generateCommitment, serializeSecretAndNullifierToBase64 } from '@/lib/zk-auth-client'
 import { ethers } from 'ethers'
 import { zkVoteAbi } from '@/abi'
 import { getAddress } from 'viem'
+import toast, { Toaster } from 'react-hot-toast'
+import { Download } from 'lucide-react'
 
 
 function shortenAddress(addr?: string) {
   if (!addr) return '';
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  return `${addr.slice(0, 6)}..${addr.slice(-4)}`;
 }
 
 
@@ -35,8 +37,6 @@ export default function VotePage({
   const [showFullDesc, setShowFullDesc] = useState(false)
   const [progressPercent, setProgressPercent] = useState(0)
   const { status, address: userAddress } = useAccount()
-
-
   const start = vote ? Number(vote.startTime) : undefined
   const end = vote ? Number(vote.endTime) : undefined
 
@@ -77,28 +77,32 @@ export default function VotePage({
     }
   }, [address, userAddress])
 
-  const { writeContractAsync, data: hash, isPending } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({ hash })
+  const { writeContractAsync, data: hash, error } = useWriteContract()
+  const { isSuccess, isError } = useWaitForTransactionReceipt({ hash })
   const [commitmentb64, setCommitmentb64] = useState<string>("")
-  const [pendingCommitmentb64, setPendingCommitmentb64] = useState<string | null>(null)
   const [, startTransition] = useTransition();
-  //const [buttonLoading, setButtonLoading] = useState(true);
+  const [buttonLoading, setButtonLoading] = useState(false);
 
 
   useEffect(() => {
-    if (commitmentb64) downloadCommitment()
-  }, [commitmentb64])
-
-  useEffect(() => {
-    console.log("pending commitment base64: ", pendingCommitmentb64)
-    if (isSuccess && pendingCommitmentb64) {
-      setCommitmentb64(pendingCommitmentb64)
-      setPendingCommitmentb64(null)
-      alert("Commit successfully!")
+    if (error) {
+      const userFriendlyMessage = (error as { shortMessage?: string })?.shortMessage || "Something went wrong while committing. Please try again."
+      toast.error(userFriendlyMessage)
     }
-  }, [isSuccess, pendingCommitmentb64])
+  }, [error]);
 
-  function downloadCommitment() {
+
+  useEffect(() => {
+    if (isSuccess) {
+      downloadSecretAndNullifier()
+      toast.success("Transaction success")
+    } else if (isError) {
+      toast.error("Transaction failed")
+    }
+    setButtonLoading(false)
+  }, [isSuccess, isError])
+
+  function downloadSecretAndNullifier() {
     const blob = new Blob([commitmentb64], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -113,30 +117,27 @@ export default function VotePage({
   }
 
   function onCommit() {
+    setButtonLoading(true)
     startTransition(
       async () => {
-        try {
-          const commitment = await generateCommitment();
-          const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
-          setPendingCommitmentb64(serializeCommitmentToBase64(commitment));
-          await writeContractAsync({
-            address: getAddress(address),
-            abi: zkVoteAbi,
-            functionName: 'commit',
-            args: [commitmentHex],
-          })
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to commit'
-          alert(message)
-        }
+        const commitment = await generateCommitment();
+        const commitmentHex = ethers.toBeHex(BigInt(commitment.commitment), 32);
+        setCommitmentb64(serializeSecretAndNullifierToBase64(commitment));
+        writeContractAsync({
+          address: getAddress(address),
+          abi: zkVoteAbi,
+          functionName: 'commit',
+          args: [commitmentHex],
+        }).catch(() => setButtonLoading(false))
       }
     );
   }
 
 
-  const voteCover = vote?.meta.imageUrl || '/poll-cover.svg'
+  const voteCover = vote?.meta.imageUrl || ''
   const voteTitle = vote?.meta.title || ''
   const voteDescription = vote?.meta.description || ''
+
   const isLongDescription = voteDescription.length > 120
   const dateRange =
     start && end
@@ -173,11 +174,9 @@ export default function VotePage({
               : undefined
   const isCommitDisabled = Boolean(commitTooltip)
 
-  const isTxLoading = isPending || isConfirming
-
-
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+      <Toaster />
       <header className="flex flex-col gap-3 justify-start items-start">
         <div className='flex w-full items-center justify-between gap-4 sm:gap-6'>
           <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
@@ -228,14 +227,24 @@ export default function VotePage({
           ))}
         </div>
       </section>
+
+      {isSuccess && commitmentb64 && (
+        <button
+          type="button"
+          onClick={downloadSecretAndNullifier}
+          className="fixed bottom-1 right-9 flex items-center gap-2 rounded-full bg-slate-800/90 px-4 py-2 text-sm font-semibold text-slate-100  backdrop-blur transition duration-200 hover:scale-105 hover:bg-slate-700"
+        >
+          <Download className="h-4 w-4" />
+        </button>
+      )}
       <button
         type="button"
-        disabled={isCommitDisabled || isTxLoading}
+        disabled={isCommitDisabled || buttonLoading || isSuccess}
         onClick={onCommit}
         title={commitTooltip}
         className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isTxLoading ? (
+        {buttonLoading ? (
           <span className="loading loading-dots loading-lg"></span>
         ) : (
           'Commit'

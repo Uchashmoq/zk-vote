@@ -8,7 +8,6 @@ export interface Commitment {
   nullifier: string;
   secret: string;
   commitment: any;
-  nullifierHash: any;
 }
 
 const loadWebAssembly: any = (wasmLoader as any).default ?? wasmLoader;
@@ -94,7 +93,6 @@ export async function generateCommitment(): Promise<Commitment> {
     nullifier: nullifier,
     secret: secret,
     commitment: commitment,
-    nullifierHash: nullifierHash,
   };
 }
 
@@ -180,7 +178,7 @@ export async function calculateMerkleRootAndZKProof(
   };
 }
 
-export function serializeCommitmentToBase64(data: Commitment): string {
+export function serializeSecretAndNullifierToBase64(data: Commitment): string {
   const json = JSON.stringify(data, (key, value) =>
     typeof value === "bigint" ? value.toString() : value
   );
@@ -190,4 +188,13 @@ export function serializeCommitmentToBase64(data: Commitment): string {
     ""
   );
   return btoa(binString);
+}
+
+export function deserializeSecretAndNullifierFromBase64(
+  base64: string
+): Commitment {
+  const binString = atob(base64);
+  const bytes = Uint8Array.from(binString, (char) => char.charCodeAt(0));
+  const json = new TextDecoder().decode(bytes);
+  return JSON.parse(json) as Commitment;
 }
