@@ -82,6 +82,7 @@ export default function VotePage({
   const [commitmentb64, setCommitmentb64] = useState<string>("")
   const [, startTransition] = useTransition();
   const [buttonLoading, setButtonLoading] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false)
 
 
   useEffect(() => {
@@ -173,83 +174,117 @@ export default function VotePage({
               ? 'You have already committed'
               : undefined
   const isCommitDisabled = Boolean(commitTooltip)
+  const modalActive = showImagePreview
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
       <Toaster />
-      <header className="flex flex-col gap-3 justify-start items-start">
-        <div className='flex w-full items-center justify-between gap-4 sm:gap-6'>
-          <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-            {voteCover && <Image
-              src={voteCover}
-              alt="Poll cover"
-              width={64}
-              height={64}
-              className="h-18 w-18 flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-800 object-cover"
-              priority
-            />}
-            <div className="min-w-0 space-y-1">
-              <h1 className="truncate text-xl font-semibold leading-tight text-slate-50 sm:text-2xl">
-                {voteTitle}
-              </h1>
-              <p className="truncate text-xs text-slate-300">Contract: {address}</p>
-              <p className="text-xs text-slate-400">{dateRange}</p>
+      <div className={modalActive ? 'pointer-events-none select-none' : ''}>
+        <header className="flex flex-col gap-3 justify-start items-start">
+          <div className='flex w-full items-center justify-between gap-4 sm:gap-6'>
+            <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+              {voteCover && (
+                <button
+                  type="button"
+                  onClick={() => setShowImagePreview(true)}
+                  className="group relative h-18 w-18 flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                >
+                  <Image
+                    src={voteCover}
+                    alt="Poll cover"
+                    fill
+                    sizes="72px"
+                    className="h-18 w-18 object-cover transition duration-200 group-hover:scale-[1.03]"
+                    priority
+                  />
+                </button>
+              )}
+              <div className="min-w-0 space-y-1">
+                <h1 className="truncate text-xl font-semibold leading-tight text-slate-50 sm:text-2xl">
+                  {voteTitle}
+                </h1>
+                <p className="truncate text-xs text-slate-300">Contract: {address}</p>
+                <p className="text-xs text-slate-400">{dateRange}</p>
+              </div>
+            </div>
+            <div className="flex-shrink-0 w-18 h-18">
+              <ProgressRing percent={progressPercent} />
             </div>
           </div>
-          <div className="flex-shrink-0 w-18 h-18">
-            <ProgressRing percent={progressPercent} />
+          <div className="space-y-2 text-sm text-slate-400">
+            <p className={`${showFullDesc ? '' : 'line-clamp-3'}`}>{voteDescription}</p>
+            {isLongDescription && (
+              <button
+                onClick={() => setShowFullDesc((v) => !v)}
+                className="text-xs font-semibold text-cyan-300 underline-offset-4 hover:underline"
+              >
+                {showFullDesc ? 'Show less' : 'Read more'}
+              </button>
+            )}
           </div>
-        </div>
-        <div className="space-y-2 text-sm text-slate-400">
-          <p className={`${showFullDesc ? '' : 'line-clamp-3'}`}>{voteDescription}</p>
-          {isLongDescription && (
-            <button
-              onClick={() => setShowFullDesc((v) => !v)}
-              className="text-xs font-semibold text-cyan-300 underline-offset-4 hover:underline"
-            >
-              {showFullDesc ? 'Show less' : 'Read more'}
-            </button>
-          )}
-        </div>
-      </header>
+        </header>
 
-      <section className="space-y-4">
-        <div className="text-sm uppercase tracking-[0.18em] text-slate-400">Candidates</div>
-        <div className="grid gap-4">
-          {sorted.map((candidate) => (
-            <CandidateCard
-              key={candidate.meta.name}
-              candidate={candidate}
-              totalVotes={totalVotes}
-              vote={vote}
-              address={address}
-            />
-          ))}
-        </div>
-      </section>
+        <section className="space-y-4">
+          <div className="text-sm uppercase tracking-[0.18em] text-slate-500">Candidates</div>
+          <div className="grid gap-4">
+            {sorted.map((candidate) => (
+              <CandidateCard
+                key={candidate.meta.name}
+                candidate={candidate}
+                totalVotes={totalVotes}
+                vote={vote}
+                address={address}
+              />
+            ))}
+          </div>
+        </section>
 
-      {isSuccess && commitmentb64 && (
+        {isSuccess && commitmentb64 && (
+          <button
+            type="button"
+            onClick={downloadSecretAndNullifier}
+            className="fixed bottom-1 right-9 flex items-center gap-2 rounded-full bg-slate-800/90 px-4 py-2 text-sm font-semibold text-slate-100  backdrop-blur transition duration-200 hover:scale-105 hover:bg-slate-700"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
-          onClick={downloadSecretAndNullifier}
-          className="fixed bottom-1 right-9 flex items-center gap-2 rounded-full bg-slate-800/90 px-4 py-2 text-sm font-semibold text-slate-100  backdrop-blur transition duration-200 hover:scale-105 hover:bg-slate-700"
+          disabled={isCommitDisabled || buttonLoading || isSuccess}
+          onClick={onCommit}
+          title={commitTooltip}
+          className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <Download className="h-4 w-4" />
+          {buttonLoading ? (
+            <span className="loading loading-dots loading-lg"></span>
+          ) : (
+            'Commit'
+          )}
         </button>
+      </div>
+      {voteCover && (
+        <dialog className="modal" open={showImagePreview} onClose={() => setShowImagePreview(false)}>
+          <div className="modal-box max-w-5xl bg-slate-900/95">
+            <button
+              type="button"
+              onClick={() => setShowImagePreview(false)}
+              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 text-white"
+            >
+              ✕
+            </button>
+            <Image
+              src={voteCover}
+              alt="Poll cover enlarged"
+              width={1400}
+              height={900}
+              className="h-full w-full object-contain rounded-xl"
+            />
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button aria-label="Close" onClick={() => setShowImagePreview(false)} />
+          </form>
+        </dialog>
       )}
-      <button
-        type="button"
-        disabled={isCommitDisabled || buttonLoading || isSuccess}
-        onClick={onCommit}
-        title={commitTooltip}
-        className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {buttonLoading ? (
-          <span className="loading loading-dots loading-lg"></span>
-        ) : (
-          'Commit'
-        )}
-      </button>
     </main>
   )
 }
