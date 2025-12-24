@@ -20,7 +20,9 @@ export default function CandidateCard({
   vote,
   address,
 }: {
+
   candidate: Candidate
+
   totalVotes: number
   vote: Vote
   address: string
@@ -39,6 +41,7 @@ export default function CandidateCard({
   const nowSeconds = Math.floor(Date.now() / 1000)
   const startTime = Number(vote.startTime)
   const endTime = Number(vote.endTime)
+  const isVoteEnded = nowSeconds >= endTime
   const voteDisabledTooltip =
     status !== 'connected'
       ? 'Connect your wallet first'
@@ -48,6 +51,8 @@ export default function CandidateCard({
           ? 'Voting has ended'
           : undefined
   const voteDisabled = Boolean(voteDisabledTooltip)
+  const maxVotes = vote.candidates.reduce((max, c) => Math.max(max, c.votes), 0)
+  const isWinner = isVoteEnded && maxVotes > 0 && candidate.votes === maxVotes
 
 
   function onVote() {
@@ -142,7 +147,7 @@ export default function CandidateCard({
   const modalActive = showDialog || showImagePreview
   //console.log("img: ", candidate.meta.imageUrl ? true : false)
   return (
-    <article className={`flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20 transition duration-200 ${modalActive ? '' : 'hover:-translate-y-[2px] hover:border-white/20 hover:bg-white/10 hover:shadow-2xl hover:shadow-black/40'}`}>
+    <article className={`relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20 transition duration-200 ${modalActive ? '' : 'hover:-translate-y-[2px] hover:border-white/20 hover:bg-white/10 hover:shadow-2xl hover:shadow-black/40'}`}>
       <div className="flex items-start gap-4">
         {candidate.meta.imageUrl && (
           <button
@@ -159,12 +164,33 @@ export default function CandidateCard({
             />
           </button>
         )}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 relative">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="line-clamp-2 break-words text-base font-semibold leading-tight text-slate-50">
                 {candidate.meta.name}
               </h3>
+              {isWinner && (
+                <div className="pointer-events-none absolute -top-1 right-2">
+                  <div className="relative flex flex-col items-center">
+                    {/* 盾牌主体 */}
+                    <div className="flex h-8 items-center justify-center bg-gradient-to-b from-amber-400 to-orange-600 px-3 pt-1 rounded-t-sm shadow-md">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                        Winner
+                      </span>
+                    </div>
+
+                    {/* 盾牌底部的尖角 (使用两片斜切模拟) */}
+                    <div className="flex">
+                      <div className="h-3 w-6 bg-orange-600 [clip-path:polygon(0_0,100%_0,100%_100%)]"></div>
+                      <div className="h-3 w-6 bg-orange-600 [clip-path:polygon(0_0,100%_0,0_100%)]"></div>
+                    </div>
+
+                    {/* 顶部的装饰性亮线 */}
+                    <div className="absolute top-0 h-[1px] w-full bg-white/40"></div>
+                  </div>
+                </div>
+              )}
               <p className={`mt-1 text-sm text-slate-300 ${expanded ? '' : 'line-clamp-2'}`}>
                 {candidate.meta.description}
               </p>
@@ -189,15 +215,17 @@ export default function CandidateCard({
           />
         </div>
 
-        <button
-          className={`flex-shrink-0 w-20 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-indigo-500/30 transition duration-150 ${voteDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110 active:translate-y-[1px]'
-            }`}
-          disabled={voteDisabled}
-          title={voteDisabledTooltip}
-          onClick={onVote}
-        >
-          Vote
-        </button>
+        {!isVoteEnded && (
+          <button
+            className={`flex-shrink-0 w-20 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-indigo-500/30 transition duration-150 ${voteDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110 active:translate-y-[1px]'
+              }`}
+            disabled={voteDisabled}
+            title={voteDisabledTooltip}
+            onClick={onVote}
+          >
+            Vote
+          </button>
+        )}
       </div>
       <div className="flex items-center justify-between text-sm text-slate-300">
         <span className="tabular-nums text-slate-100 font-semibold">{candidate.votes} votes</span>

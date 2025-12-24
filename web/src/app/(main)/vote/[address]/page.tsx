@@ -229,7 +229,7 @@ export default function VotePage({
           <div className="grid gap-4">
             {sorted.map((candidate) => (
               <CandidateCard
-                key={candidate.meta.name}
+                key={candidate.meta.orginal}
                 candidate={candidate}
                 totalVotes={totalVotes}
                 vote={vote}
@@ -248,19 +248,21 @@ export default function VotePage({
             <Download className="h-4 w-4" />
           </button>
         )}
-        <button
-          type="button"
-          disabled={isCommitDisabled || buttonLoading || isSuccess}
-          onClick={onCommit}
-          title={commitTooltip}
-          className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {buttonLoading ? (
-            <span className="loading loading-dots loading-lg"></span>
-          ) : (
-            'Commit'
-          )}
-        </button>
+        {!isAfterEnd && (
+          <button
+            type="button"
+            disabled={isCommitDisabled || buttonLoading || isSuccess}
+            onClick={onCommit}
+            title={commitTooltip}
+            className="fixed inset-x-0 bottom-8 mx-auto w-50 max-w-md rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-6 py-3 text-center text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-105 hover:shadow-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {buttonLoading ? (
+              <span className="loading loading-dots loading-lg"></span>
+            ) : (
+              'Commit'
+            )}
+          </button>
+        )}
       </div>
       {voteCover && (
         <dialog className="modal" open={showImagePreview} onClose={() => setShowImagePreview(false)}>
