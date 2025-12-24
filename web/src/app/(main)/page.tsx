@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CircleStar, Eye, EyeOff, Search, ShieldCheck } from 'lucide-react'
+import { CircleStar, Eye, EyeOff, Filter, Search, ShieldCheck } from 'lucide-react'
 import VoteCard from '@/components/VoteCard'
 import { useAccount } from 'wagmi'
 import { queryVotes } from '@/actions'
@@ -62,8 +62,9 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="btn btn-sm rounded-md border border-white/5 bg-white/5 px-4 text-sm font-semibold text-slate-100 hover:border-white/20 hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-blue-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition duration-200 hover:scale-[1.02] hover:shadow-emerald-400/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
           >
+            <Filter className="h-4 w-4" aria-hidden />
             Filters
           </button>
           {menuOpen && <ul
