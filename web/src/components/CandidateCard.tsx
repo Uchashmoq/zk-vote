@@ -31,7 +31,8 @@ export default function CandidateCard({
   const [dialogState, setDialogState] = useState<'idle' | 'loading' | 'success'>('idle')
   const percent =
     totalVotes === 0 ? 0 : Math.round((candidate.votes / Math.max(totalVotes, 1)) * 100)
-  const barWidth = totalVotes === 0 ? '0%' : `${Math.max(6, (candidate.votes / totalVotes) * 100)}%`
+  const barWidth = totalVotes === 0 ? '0%' : `${Math.max(0, (candidate.votes / totalVotes) * 100)}%`
+
   const { status } = useAccount()
 
   const nowSeconds = Math.floor(Date.now() / 1000)
@@ -90,39 +91,41 @@ export default function CandidateCard({
   function handleDialogVote() {
     setDialogState('loading')
     startTransition(async () => {
+      try {
+        const commitment = deserializeSecretAndNullifierFromBase64(commitmentInput.trim())
+        const commitments = await getAllCommitments(address)
 
-      const commitment = deserializeSecretAndNullifierFromBase64(commitmentInput.trim())
-      const commitments = await getAllCommitments(address)
+        const rootAndPath = await calculateMerkleRootAndPath(
+          commitments,
+          commitment.commitment
+        );
 
-      const rootAndPath = await calculateMerkleRootAndPath(
-        commitments,
-        commitment.commitment
-      );
+        const proofData = await calculateMerkleRootAndZKProof(
+          rootAndPath,
+          commitment
+        );
+        const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
+        const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
 
-      const proofData = await calculateMerkleRootAndZKProof(
-        rootAndPath,
-        commitment
-      );
-      const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
-      const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
+        const args = [
+          BigInt(candidate.index),
+          nullifierHex,
+          rootHex,
+          proofData.proof_a,
+          proofData.proof_b,
+          proofData.proof_c
+        ]
 
-      const args = [
-        BigInt(candidate.index),
-        nullifierHex,
-        rootHex,
-        proofData.proof_a,
-        proofData.proof_b,
-        proofData.proof_c
-      ]
-
-      writeContractAsync({
-        abi: zkVoteAbi,
-        address: getAddress(address),
-        functionName: "vote",
-        args: args
-      }).catch(() => setDialogState("idle"))
-
-
+        writeContractAsync({
+          abi: zkVoteAbi,
+          address: getAddress(address),
+          functionName: "vote",
+          args: args
+        }).catch(() => setDialogState("idle"))
+      } catch (e) {
+        setDialogState("idle")
+        toast.error("Fail to vote.")
+      }
     })
   }
 
