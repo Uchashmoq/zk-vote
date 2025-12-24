@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode, useState } from 'react'
 import { type State, WagmiProvider } from 'wagmi'
+import { Toaster } from 'react-hot-toast'
 
 import { getConfig } from '@/wagmi'
 
@@ -17,6 +18,7 @@ export function Providers(props: {
     <WagmiProvider config={config} initialState={props.initialState}>
       <QueryClientProvider client={queryClient}>
         {props.children}
+        <Toaster />
       </QueryClientProvider>
     </WagmiProvider>
   )

@@ -28,6 +28,7 @@
     "prisma": "^7.1.0",
     "react": "latest",
     "react-dom": "latest",
+    "react-hot-toast": "^2.6.0",
     "snarkjs": "^0.7.5",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.21.0",

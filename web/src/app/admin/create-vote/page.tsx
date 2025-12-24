@@ -9,6 +9,7 @@ import VoterPickerModal from "@/components/VoterPickerModal"
 import { usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi"
 import { zkVoteFactoryAddress } from "@/address"
 import { zkVoteFactoryAbi } from "@/abi"
+import { toast } from "react-hot-toast"
 
 type CandidateMeta = { name: string, imageUrl: string, imageCid: string, description: string }
 
@@ -45,22 +46,28 @@ export default function CreateVotePage() {
     useEffect(() => {
         getVoters().then(setVoters)
     }, [])
-
-
-
     const [showVoterPicker, setShowVoterPicker] = useState(false)
     const [showAddCandidateModal, setShowCandidateModal] = useState(false)
     const publicClient = usePublicClient()
-    const { writeContract, data: hash, isPending } = useWriteContract()
-    const { isLoading: isConfirming, isSuccess, isError } =
-        useWaitForTransactionReceipt({ hash })
+    const { writeContractAsync, data: hash, isPending, error } = useWriteContract()
+    const { isSuccess, isError } = useWaitForTransactionReceipt({ hash });
+    const [buttonLoading, setButtonLoading] = useState(false)
+
+    useEffect(() => {
+        if (error) {
+            const userFriendlyMessage = (error as { shortMessage?: string })?.shortMessage || "Something went wrong while creating the vote. Please try again."
+            toast.error(userFriendlyMessage)
+        }
+    }, [error]);
+
 
     useEffect(() => {
         if (isSuccess) {
-            alert("Transaction success")
+            toast.success("Transaction success")
         } else if (isError) {
-            alert("Transaction failed")
+            toast.error("Transaction failed")
         }
+        setButtonLoading(false)
     }, [isSuccess, isError])
 
     function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,33 +91,50 @@ export default function CreateVotePage() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
-        if (!title.trim() || !description.trim() || !start || !end) {
-            alert("Please complete all required fields.")
+        setButtonLoading(true)
+        if (!title.trim()) {
+            setButtonLoading(false)
+            toast.error("Please enter a title.")
+            return
+        }
+        if (!start) {
+            setButtonLoading(false)
+            toast.error("Please select a start time.")
+            return
+        }
+        if (!end) {
+            setButtonLoading(false)
+            toast.error("Please select an end time.")
             return
         }
         const startSeconds = Math.floor(new Date(start).getTime() / 1000)
         const endSeconds = Math.floor(new Date(end).getTime() / 1000)
         if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds)) {
-            alert("Invalid start or end time.")
+            setButtonLoading(false)
+            toast.error("Invalid start or end time.")
             return
         }
         const startTime = BigInt(startSeconds)
         const endTime = BigInt(endSeconds)
         if (endTime <= startTime) {
-            alert("End time must be after start time.")
+            setButtonLoading(false)
+            toast.error("End time must be after start time.")
             return
         }
         const client = publicClient
         if (!client) {
-            alert("No public client available.")
+            setButtonLoading(false)
+            toast.error("No public client available.")
             return
         }
         const block = await client.getBlock()
         if (endTime <= block.timestamp) {
-            alert("End time must be after current block time.")
+            setButtonLoading(false)
+            toast.error("End time must be after current block time.")
             return
         }
         const voteMeta = JSON.stringify({ title: title, description: description, imageUrl: imageUrl, imageCid: imageCid })
+
         const pickedVoterAddress = voters.reduce<string[]>((acc, voter) => {
             if (voterPicked[voter.id] && voter.address) {
                 acc.push(voter.address)
@@ -118,9 +142,21 @@ export default function CreateVotePage() {
             return acc
         }, [])
 
+        if (pickedVoterAddress.length < 1) {
+            setButtonLoading(false)
+            toast.error("Please add at least one voter.")
+            return
+        }
+
         const candidateMetas = candidates.map((c) => {
             return JSON.stringify(c)
         })
+
+        if (candidateMetas.length < 1) {
+            setButtonLoading(false)
+            toast.error("Please add at least one candidate.")
+            return
+        }
 
         const args = [
             voteMeta,
@@ -130,12 +166,12 @@ export default function CreateVotePage() {
             endTime
         ]
 
-        writeContract({
+        writeContractAsync({
             address: zkVoteFactoryAddress,
             abi: zkVoteFactoryAbi,
             functionName: 'createVote',
             args: args
-        })
+        }).catch(() => setButtonLoading(false))
 
     }
 
@@ -352,9 +388,9 @@ export default function CreateVotePage() {
                 form=""
                 onClick={handleSubmit}
                 className="fixed bottom-8 right-8 z-40 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-xl shadow-indigo-500/40 transition hover:scale-105 hover:shadow-2xl"
-                disabled={isPending || isConfirming}
+                disabled={buttonLoading}
             >
-                {isPending || isConfirming ? <span className="loading loading-dots loading-md"></span> : "Create vote"}
+                {buttonLoading ? <span className="loading loading-dots loading-md"></span> : "Create vote"}
             </button>
         </main>
     )
