@@ -30,9 +30,9 @@ export interface Vote {
 export function stringToCandidateMeta(meta: string): CandidateMeta {
   const fallbackMeta: CandidateMeta = {
     name: "???",
-    imageUrl: "???",
-    imageCid: "???",
-    description: "???",
+    imageUrl: "",
+    imageCid: "",
+    description: "",
     orginal: meta,
   };
 
@@ -41,7 +41,7 @@ export function stringToCandidateMeta(meta: string): CandidateMeta {
     return {
       name: typeof parsed?.name === "string" ? parsed.name : fallbackMeta.name,
       imageUrl:
-        typeof parsed?.imageUrl === "string"
+        typeof parsed?.imageUrl === "string" && parsed.imageUrl
           ? parsed.imageUrl
           : fallbackMeta.imageUrl,
       imageCid:
@@ -70,9 +70,9 @@ export function stringToCandidateMeta(meta: string): CandidateMeta {
 export function stringToVoteMeta(meta: string): VoteMeta {
   const fallbackMeta: VoteMeta = {
     title: "???",
-    description: "???",
-    imageUrl: "???",
-    imageCid: "???",
+    description: "",
+    imageUrl: "/imgNotfound.png",
+    imageCid: "",
     original: meta,
   };
   const voteMeta: VoteMeta = (() => {
@@ -86,7 +86,7 @@ export function stringToVoteMeta(meta: string): VoteMeta {
             ? parsed.description
             : fallbackMeta.description,
         imageUrl:
-          typeof parsed?.imageUrl === "string"
+          typeof parsed?.imageUrl === "string" && parsed.imageUrl
             ? parsed.imageUrl
             : fallbackMeta.imageUrl,
         imageCid:

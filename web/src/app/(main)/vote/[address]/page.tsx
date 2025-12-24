@@ -11,7 +11,7 @@ import { Commitment, generateCommitment, serializeCommitmentToBase64 } from '@/l
 import { ethers } from 'ethers'
 import { zkVoteAbi } from '@/abi'
 import { getAddress } from 'viem'
-import { getValidImageUrl } from '@/lib/utils'
+
 
 function shortenAddress(addr?: string) {
   if (!addr) return '';
@@ -137,6 +137,7 @@ export default function VotePage({
   const voteCover = vote?.meta.imageUrl || '/poll-cover.svg'
   const voteTitle = vote?.meta.title || ''
   const voteDescription = vote?.meta.description || ''
+  const isLongDescription = voteDescription.length > 120
   const dateRange =
     start && end
       ? `${new Date(start * 1000).toLocaleString()} ~ ${new Date(end * 1000).toLocaleString()}`
@@ -180,15 +181,14 @@ export default function VotePage({
       <header className="flex flex-col gap-3 justify-start items-start">
         <div className='flex w-full items-center justify-between gap-4 sm:gap-6'>
           <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-            <Image
-              // 
-              src={getValidImageUrl(voteCover)}
+            {voteCover && <Image
+              src={voteCover}
               alt="Poll cover"
               width={64}
               height={64}
               className="h-18 w-18 flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-800 object-cover"
               priority
-            />
+            />}
             <div className="min-w-0 space-y-1">
               <h1 className="truncate text-xl font-semibold leading-tight text-slate-50 sm:text-2xl">
                 {voteTitle}
@@ -203,12 +203,14 @@ export default function VotePage({
         </div>
         <div className="space-y-2 text-sm text-slate-400">
           <p className={`${showFullDesc ? '' : 'line-clamp-3'}`}>{voteDescription}</p>
-          <button
-            onClick={() => setShowFullDesc((v) => !v)}
-            className="text-xs font-semibold text-cyan-300 underline-offset-4 hover:underline"
-          >
-            {showFullDesc ? 'Show less' : 'Read more'}
-          </button>
+          {isLongDescription && (
+            <button
+              onClick={() => setShowFullDesc((v) => !v)}
+              className="text-xs font-semibold text-cyan-300 underline-offset-4 hover:underline"
+            >
+              {showFullDesc ? 'Show less' : 'Read more'}
+            </button>
+          )}
         </div>
       </header>
 

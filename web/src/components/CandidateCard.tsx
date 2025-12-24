@@ -2,7 +2,6 @@
 
 import { zkVoteAbi } from '@/abi'
 import { getAllCommitments } from '@/actions'
-import { getValidImageUrl } from '@/lib/utils'
 import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, Commitment } from '@/lib/zk-auth-client'
 import { Candidate, Vote } from '@/types'
 import { ethers } from 'ethers'
@@ -137,19 +136,19 @@ export default function CandidateCard({
   function handleSuccessConfirm() {
     handleDialogCancel()
   }
-
+  //console.log("img: ", candidate.meta.imageUrl ? true : false)
   return (
     <article className={`flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20 transition duration-200 ${showDialog ? '' : 'hover:-translate-y-[2px] hover:border-white/20 hover:bg-white/10 hover:shadow-2xl hover:shadow-black/40'}`}>
       <div className="flex items-start gap-4">
-        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-slate-800">
+        {candidate.meta.imageUrl && <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-slate-800">
           <Image
-            src={getValidImageUrl(candidate.meta.imageUrl)}
+            src={candidate.meta.imageUrl}
             alt={candidate.meta.name}
             fill
             sizes="56px"
-            className="object-cover transition duration-200 group-hover:scale-[1.03]"
+            className={"object-cover transition duration-200 group-hover:scale-[1.03]"}
           />
-        </div>
+        </div>}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
