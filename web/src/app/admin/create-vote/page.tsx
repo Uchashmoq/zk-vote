@@ -78,7 +78,10 @@ export default function CreateVotePage() {
                             topics: log.topics,
                         })
                         if (decoded.eventName === "VoteCreated") {
-                            voteAddr = decoded.args?.addr as string | undefined
+                            const args: any = decoded.args
+                            voteAddr =
+                                (typeof args === 'object' && args && 'addr' in args ? (args.addr as string) : undefined) ??
+                                (Array.isArray(args) && typeof args[0] === 'string' ? args[0] : undefined)
                             break
                         }
                     } catch {
