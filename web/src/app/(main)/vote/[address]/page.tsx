@@ -110,7 +110,7 @@ export default function VotePage({
     link.href = url;
     const shortenedAddress = shortenAddress(address);
     const shortenedUserAddress = shortenAddress(userAddress);
-    link.download = `commitment-${shortenedAddress}-${shortenedUserAddress}.txt`;
+    link.download = `secret-${shortenedAddress}-${shortenedUserAddress}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -243,7 +243,7 @@ export default function VotePage({
           <button
             type="button"
             onClick={downloadSecretAndNullifier}
-            className="fixed bottom-1 right-9 flex items-center gap-2 rounded-full bg-slate-800/90 px-4 py-2 text-sm font-semibold text-slate-100  backdrop-blur transition duration-200 hover:scale-105 hover:bg-slate-700"
+            className="fixed bottom-9 right-9 flex items-center gap-2 rounded-full bg-slate-800/90 px-4 py-2 text-sm font-semibold text-slate-100  backdrop-blur transition duration-200 hover:scale-105 hover:bg-slate-700"
           >
             <Download className="h-4 w-4" />
           </button>
