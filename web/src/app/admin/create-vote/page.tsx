@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Search } from "lucide-react"
 import { startTransition, useEffect, useState } from "react"
 import { Voter } from "../../../../prisma/src/lib/prisma/client"
@@ -10,6 +11,7 @@ import { usePublicClient, useWaitForTransactionReceipt, useWriteContract } from 
 import { zkVoteFactoryAddress } from "@/address"
 import { zkVoteFactoryAbi } from "@/abi"
 import { toast } from "react-hot-toast"
+import { decodeEventLog } from "viem"
 
 type CandidateMeta = { name: string, imageUrl: string, imageCid: string, description: string }
 
@@ -48,9 +50,10 @@ export default function CreateVotePage() {
     }, [])
     const [showVoterPicker, setShowVoterPicker] = useState(false)
     const [showAddCandidateModal, setShowCandidateModal] = useState(false)
+    const router = useRouter()
     const publicClient = usePublicClient()
     const { writeContractAsync, data: hash, error } = useWriteContract()
-    const { isSuccess, isError } = useWaitForTransactionReceipt({ hash });
+    const { isSuccess, isError, data: receipt } = useWaitForTransactionReceipt({ hash });
     const [buttonLoading, setButtonLoading] = useState(false)
 
     useEffect(() => {
@@ -62,13 +65,38 @@ export default function CreateVotePage() {
 
 
     useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined
         if (isSuccess) {
             toast.success("Transaction success")
+            let voteAddr: string | undefined
+            if (receipt?.logs?.length) {
+                for (const log of receipt.logs) {
+                    try {
+                        const decoded = decodeEventLog({
+                            abi: zkVoteFactoryAbi,
+                            data: log.data,
+                            topics: log.topics,
+                        })
+                        if (decoded.eventName === "VoteCreated") {
+                            voteAddr = decoded.args?.addr as string | undefined
+                            break
+                        }
+                    } catch {
+                        // skip logs that do not match the factory ABI
+                    }
+                }
+            }
+            if (voteAddr) {
+                timer = setTimeout(() => router.replace(`/vote/${voteAddr}`), 2000)
+            }
         } else if (isError) {
             toast.error("Transaction failed")
         }
         setButtonLoading(false)
-    }, [isSuccess, isError])
+        return () => {
+            if (timer) clearTimeout(timer)
+        }
+    }, [isSuccess, isError, receipt, router])
 
     function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -388,7 +416,7 @@ export default function CreateVotePage() {
                 form=""
                 onClick={handleSubmit}
                 className="fixed bottom-8 right-8 z-40 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-xl shadow-indigo-500/40 transition hover:scale-105 hover:shadow-2xl"
-                disabled={buttonLoading}
+                disabled={buttonLoading || isSuccess}
             >
                 {buttonLoading ? <span className="loading loading-dots loading-md"></span> : "Create vote"}
             </button>

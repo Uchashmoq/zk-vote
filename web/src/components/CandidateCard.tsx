@@ -2,7 +2,7 @@
 
 import { zkVoteAbi } from '@/abi'
 import { getAllCommitments } from '@/actions'
-import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, Commitment, deserializeSecretAndNullifierFromBase64 } from '@/lib/zk-auth-client'
+import { calculateMerkleRootAndPath, calculateMerkleRootAndZKProof, deserializeSecretAndNullifierFromBase64 } from '@/lib/zk-auth-client'
 import { Candidate, Vote } from '@/types'
 import { ethers } from 'ethers'
 import Image from 'next/image'
@@ -13,25 +13,24 @@ import { toast } from 'react-hot-toast'
 
 
 
-
 export default function CandidateCard({
   candidate,
   totalVotes,
   vote,
   address,
 }: {
-
   candidate: Candidate
-
   totalVotes: number
   vote: Vote
   address: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
-  const [commitmentInput, setCommitmentInput] = useState('')
+  const [secretInput, setSecretInput] = useState('')
   const [dialogState, setDialogState] = useState<'idle' | 'loading' | 'success'>('idle')
   const [showImagePreview, setShowImagePreview] = useState(false)
+
+
   const percent =
     totalVotes === 0 ? 0 : Math.round((candidate.votes / Math.max(totalVotes, 1)) * 100)
   const barWidth = totalVotes === 0 ? '0%' : `${Math.max(0, (candidate.votes / totalVotes) * 100)}%`
@@ -66,7 +65,7 @@ export default function CandidateCard({
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        setCommitmentInput(reader.result.trim())
+        setSecretInput(reader.result.trim())
       }
     }
     reader.readAsText(file)
@@ -98,7 +97,7 @@ export default function CandidateCard({
     setDialogState('loading')
     startTransition(async () => {
       try {
-        const commitment = deserializeSecretAndNullifierFromBase64(commitmentInput.trim())
+        const commitment = deserializeSecretAndNullifierFromBase64(secretInput.trim())
         const commitments = await getAllCommitments(address)
 
         const rootAndPath = await calculateMerkleRootAndPath(
@@ -137,15 +136,15 @@ export default function CandidateCard({
 
   function handleDialogCancel() {
     setShowDialog(false)
-    setCommitmentInput('')
+    setSecretInput('')
     setDialogState('idle')
   }
 
   function handleSuccessConfirm() {
     handleDialogCancel()
+    window.location.reload()
   }
   const modalActive = showDialog || showImagePreview
-  //console.log("img: ", candidate.meta.imageUrl ? true : false)
   return (
     <article className={`relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20 transition duration-200 ${modalActive ? '' : 'hover:-translate-y-[2px] hover:border-white/20 hover:bg-white/10 hover:shadow-2xl hover:shadow-black/40'}`}>
       <div className="flex items-start gap-4">
@@ -234,15 +233,15 @@ export default function CandidateCard({
       {showDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/50">
-            <h4 className="text-lg font-semibold text-slate-50">Submit Commitment</h4>
+            <h4 className="text-lg font-semibold text-slate-50">Submit Secret</h4>
             <p className="mt-1 text-sm text-slate-300">
-              Paste your commitment (base64). You can also select a file containing the base64
+              Paste your secret (base64). You can also select a file containing the base64
               string.
             </p>
             <textarea
-              value={commitmentInput}
-              onChange={(e) => setCommitmentInput(e.target.value)}
-              placeholder="Paste commitment base64 here"
+              value={secretInput}
+              onChange={(e) => setSecretInput(e.target.value)}
+              placeholder="Paste secret base64 here"
               className="mt-4 h-32 w-full resize-none rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
             />
             <div className="mt-3">
