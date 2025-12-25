@@ -84,12 +84,14 @@ export default function CreateVotePage() {
                                 (Array.isArray(args) && typeof args[0] === 'string' ? args[0] : undefined)
                             break
                         }
-                    } catch {
-                        // skip logs that do not match the factory ABI
+                        console.log("create a new vote: ", voteAddr)
+                    } catch (e) {
+                        console.error(e)
                     }
                 }
             }
             if (voteAddr) {
+                console.log("ready to jump :", voteAddr)
                 timer = setTimeout(() => router.replace(`/vote/${voteAddr}`), 2000)
             }
         } else if (isError) {
