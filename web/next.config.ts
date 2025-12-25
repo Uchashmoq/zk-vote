@@ -27,6 +27,29 @@ const nextConfig: NextConfig = {
     ],
     dangerouslyAllowLocalIP: true,
   },
+  webpack(config) {
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+
+      // wagmi optional connector deps (we don't use them)
+      "@coinbase/wallet-sdk": false,
+      "@metamask/sdk": false,
+      "@gemini-wallet/core": false,
+      "@base-org/account": false,
+
+      // Safe
+      "@safe-global/safe-apps-sdk": false,
+      "@safe-global/safe-apps-provider": false,
+
+      // WalletConnect
+      "@walletconnect/ethereum-provider": false,
+
+      // Porto
+      porto: false,
+      "porto/internal": false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
