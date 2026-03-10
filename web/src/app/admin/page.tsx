@@ -2,6 +2,7 @@
 import { getVoters } from "@/actions"
 import VoterDashboard from "@/components/VoterDashboard"
 
+export const dynamic = 'force-dynamic'
 
 
 export default async function AdminPage() {
