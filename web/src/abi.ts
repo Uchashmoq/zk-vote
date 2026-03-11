@@ -408,7 +408,7 @@ export const zkVoteAbi = [
     inputs: [
       {
         internalType: "bytes32",
-        name: "_nullifier",
+        name: "_nullifierHash",
         type: "bytes32",
       },
       {
@@ -823,7 +823,7 @@ export const zkVoteAbi = [
       },
       {
         internalType: "bytes32",
-        name: "_nullifier",
+        name: "_nullifierHash",
         type: "bytes32",
       },
       {
