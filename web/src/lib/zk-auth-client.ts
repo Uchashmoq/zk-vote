@@ -13,7 +13,7 @@ export interface Commitment {
 const loadWebAssembly: any = (wasmLoader as any).default ?? wasmLoader;
 
 const FIELD_SIZE = BigInt(
-  "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+  "21888242871839275222246405745257275088548364400416034343698204186575808495617",
 );
 
 const ZERO_VALUE =
@@ -88,7 +88,7 @@ export async function generateCommitment(): Promise<Commitment> {
   const nullifier = BigInt(ethers.hexlify(ethers.randomBytes(31))).toString();
 
   const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]));
-  const nullifierHash = mimc.F.toString(mimc.multiHash([nullifier]));
+
   return {
     nullifier: nullifier,
     secret: secret,
@@ -98,7 +98,7 @@ export async function generateCommitment(): Promise<Commitment> {
 
 export async function calculateMerkleRootAndPath(
   elements: any[],
-  element?: any
+  element?: any,
 ) {
   const capacity = 2 ** LEVELS;
   if (elements.length > capacity) throw new Error("Tree is full");
@@ -115,7 +115,7 @@ export async function calculateMerkleRootAndPath(
         layers[level - 1][i * 2],
         i * 2 + 1 < layers[level - 1].length
           ? layers[level - 1][i * 2 + 1]
-          : zeros[level - 1]
+          : zeros[level - 1],
       );
     }
   }
@@ -151,7 +151,7 @@ export async function calculateMerkleRootAndPath(
 
 export async function calculateMerkleRootAndZKProof(
   rootAndPath: any,
-  commitment: Commitment
+  commitment: Commitment,
 ) {
   const zkey = await getVerifierZkey();
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(
@@ -162,11 +162,11 @@ export async function calculateMerkleRootAndZKProof(
       pathIndices: rootAndPath.pathIndices,
     },
     getVerifierWASM(),
-    zkey
+    zkey,
   );
 
   const cd = convertCallData(
-    await snarkjs.groth16.exportSolidityCallData(proof, publicSignals)
+    await snarkjs.groth16.exportSolidityCallData(proof, publicSignals),
   );
 
   return {
@@ -180,18 +180,18 @@ export async function calculateMerkleRootAndZKProof(
 
 export function serializeSecretAndNullifierToBase64(data: Commitment): string {
   const json = JSON.stringify(data, (key, value) =>
-    typeof value === "bigint" ? value.toString() : value
+    typeof value === "bigint" ? value.toString() : value,
   );
 
   const bytes = new TextEncoder().encode(json);
   const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
-    ""
+    "",
   );
   return btoa(binString);
 }
 
 export function deserializeSecretAndNullifierFromBase64(
-  base64: string
+  base64: string,
 ): Commitment {
   const binString = atob(base64);
   const bytes = Uint8Array.from(binString, (char) => char.charCodeAt(0));
