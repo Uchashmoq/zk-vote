@@ -54,7 +54,7 @@ contract ZkVote is ZkAuth {
 
     function vote(
         uint256 _candidateId,
-        bytes32 _nullifier,
+        bytes32 _nullifierHash,
         bytes32 _root,
         uint[2] calldata _proof_a,
         uint[2][2] calldata _proof_b,
@@ -62,11 +62,11 @@ contract ZkVote is ZkAuth {
     ) public {
         require(block.timestamp >= startTime, "Voting has not started");
         require(block.timestamp <= endTime, "Voting has ended");
-        require(!isNullifierUsed[_nullifier], "You have voted");
-        auth(_nullifier, _root, _proof_a, _proof_b, _proof_c);
+        require(!isNullifierUsed[_nullifierHash], "You have voted");
+        auth(_nullifierHash, _root, _proof_a, _proof_b, _proof_c);
         candidates[_candidateId].votes += 1;
-        isNullifierUsed[_nullifier] = true;
-        emit Vote(_nullifier, _candidateId, msg.sender);
+        isNullifierUsed[_nullifierHash] = true;
+        emit Vote(_nullifierHash, _candidateId, msg.sender);
     }
 
     function candidateNum() public view returns (uint256) {

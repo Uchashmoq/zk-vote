@@ -63,7 +63,7 @@ contract ZkAuth is MerkleTree {
     }
 
     function auth(
-        bytes32 _nullifier,
+        bytes32 _nullifierHash,
         bytes32 _root,
         uint[2] calldata _proof_a,
         uint[2][2] calldata _proof_b,
@@ -75,7 +75,7 @@ contract ZkAuth is MerkleTree {
                 _proof_a,
                 _proof_b,
                 _proof_c,
-                [uint256(_nullifier), uint256(_root)]
+                [uint256(_nullifierHash), uint256(_root)]
             ),
             "Invalid proof"
         );
