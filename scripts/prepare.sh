@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-
 mkdir -p build
 mkdir -p dist
-
-#curl -L --retry 3 --continue-at - -o ./ptau/powersOfTau28_hez_final_15.ptau https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_15.ptau
 circom test/circuits/CommitmentHasherTest.circom --wasm --r1cs -o ./build
 yarn snarkjs groth16 setup build/CommitmentHasherTest.r1cs ptau/powersOfTau28_hez_final_15.ptau build/CommitmentHasherTest.zkey
 circom test/circuits/MerkleTreeCheckerTest.circom --wasm --r1cs -o ./build
