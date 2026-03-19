@@ -59,7 +59,7 @@ contract ZkVote is ZkAuth {
         uint[2] calldata _proof_a,
         uint[2][2] calldata _proof_b,
         uint[2] calldata _proof_c
-    ) public {
+    ) public virtual {
         require(block.timestamp >= startTime, "Voting has not started");
         require(block.timestamp <= endTime, "Voting has ended");
         require(!isNullifierUsed[_nullifierHash], "You have voted");
