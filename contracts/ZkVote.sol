@@ -69,6 +69,28 @@ contract ZkVote is ZkAuth {
         emit Vote(_nullifierHash, _candidateId, msg.sender);
     }
 
+    function committedVoters() public view returns (address[] memory) {
+        uint256 committedCount = 0;
+
+        for (uint256 i = 0; i < voters.length; i++) {
+            if (isCommitted[voters[i]]) {
+                committedCount++;
+            }
+        }
+
+        address[] memory committed = new address[](committedCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < voters.length; i++) {
+            address voter = voters[i];
+            if (isCommitted[voter]) {
+                committed[index] = voter;
+                index++;
+            }
+        }
+
+        return committed;
+    }
+
     function candidateNum() public view returns (uint256) {
         return candidates.length;
     }
@@ -77,7 +99,7 @@ contract ZkVote is ZkAuth {
         return voters.length;
     }
 
-    function allVotes() public view returns (address[] memory) {
+    function allVoters() public view returns (address[] memory) {
         return voters;
     }
 
