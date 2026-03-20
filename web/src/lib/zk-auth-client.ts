@@ -63,22 +63,44 @@ function convertCallData(calldata: any) {
 
 let cachedVerifierZkey: Uint8Array | null = null;
 let verifierZkeyPromise: Promise<Uint8Array> | null = null;
+
+function isBrowserEnv() {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+async function loadVerifierZkeyInNode(): Promise<Uint8Array> {
+  const fs = await new Function(
+    'return import("node:fs/promises")',
+  )().then((m: any) => m.default ?? m);
+  const path = await new Function(
+    'return import("node:path")',
+  )().then((m: any) => m.default ?? m);
+
+  const zkeyPath = path.resolve(process.cwd(), "build", "Verifier.zkey");
+  const buffer = await fs.readFile(zkeyPath);
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+}
+
 async function getVerifierZkey(): Promise<Uint8Array> {
   if (cachedVerifierZkey) return cachedVerifierZkey;
   if (verifierZkeyPromise) return verifierZkeyPromise;
-  verifierZkeyPromise = fetch("/Verifier.zkey")
-    .then((res) => {
-      if (!res.ok) throw new Error("Failed to fetch Verifier.zkey");
-      return res.arrayBuffer();
-    })
-    .then((buffer) => {
-      cachedVerifierZkey = new Uint8Array(buffer);
-      return cachedVerifierZkey;
+
+  verifierZkeyPromise = (isBrowserEnv()
+    ? fetch("/Verifier.zkey").then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch Verifier.zkey");
+        return res.arrayBuffer().then((buffer) => new Uint8Array(buffer));
+      })
+    : loadVerifierZkeyInNode()
+  )
+    .then((zkey) => {
+      cachedVerifierZkey = zkey;
+      return zkey;
     })
     .catch((err) => {
       verifierZkeyPromise = null;
       throw err;
     });
+
   return verifierZkeyPromise;
 }
 
