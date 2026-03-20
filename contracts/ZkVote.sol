@@ -8,8 +8,8 @@ contract ZkVote is ZkAuth {
         string meta;
     }
     string public meta;
-    uint256 public startTime;
-    uint256 public endTime;
+    uint256 public immutable startTime;
+    uint256 public immutable endTime;
     Candidate[] public candidates;
     mapping(bytes32 => bool) public isNullifierUsed;
     mapping(address => bool) public isVoter;
