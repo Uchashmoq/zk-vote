@@ -21,7 +21,7 @@ import {
   generateCommitment as generateCommitment1,
   calculateMerkleRootAndPath as calculateMerkleRootAndPath1,
   calculateMerkleRootAndZKProof as calculateMerkleRootAndZKProof1c,
-} from "../src/zk-auth-client.js";
+} from "../web/src/lib/zk-auth-client.js";
 
 const { createCode, abi } = mimcSpongecontract;
 const bytecode = createCode("mimcsponge", 220);
@@ -33,12 +33,12 @@ export interface Commitment {
 }
 export function serializeCommitmentToBase64(data: Commitment): string {
   const json = JSON.stringify(data, (key, value) =>
-    typeof value === "bigint" ? value.toString() : value
+    typeof value === "bigint" ? value.toString() : value,
   );
 
   const bytes = new TextEncoder().encode(json);
   const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
-    ""
+    "",
   );
   return btoa(binString);
 }
@@ -67,7 +67,7 @@ describe("ZkAuth", function () {
     const zkauthFactory = new ZkAuth__factory(deployer);
     zkvoteContract = await zkauthFactory.deploy(
       await mimcContract.getAddress(),
-      await verifier.getAddress()
+      await verifier.getAddress(),
     );
     await zkvoteContract.waitForDeployment();
   });
@@ -102,7 +102,7 @@ describe("ZkAuth", function () {
     await expect(
       zkvoteContract
         .connect(voter)
-        .commit(ethers.toBeHex(BigInt(commitment2), 32))
+        .commit(ethers.toBeHex(BigInt(commitment2), 32)),
     ).to.be.revertedWith("You have already committed");
   });
 
@@ -113,7 +113,7 @@ describe("ZkAuth", function () {
 
     await zkvoteContract.connect(firstVoter).commit(commitmentHex);
     await expect(
-      zkvoteContract.connect(secondVoter).commit(commitmentHex)
+      zkvoteContract.connect(secondVoter).commit(commitmentHex),
     ).to.be.revertedWith("Your commitment has been used");
   });
 
@@ -128,7 +128,7 @@ describe("ZkAuth", function () {
     await zkvoteContract.connect(secondVoter).commit(commitmentHex2);
 
     const events = await zkvoteContract.queryFilter(
-      zkvoteContract.filters.Commit()
+      zkvoteContract.filters.Commit(),
     );
 
     expect(events.length).to.equal(2);
@@ -152,11 +152,11 @@ describe("ZkAuth", function () {
     const { root, pathElements, pathIndices } = calculateMerkleRootAndPath(
       mimcjs,
       LEVELS,
-      []
+      [],
     );
     const expectedZero = await zkvoteContract.zeros(LEVELS - 1);
     const onChainRoot = await zkvoteContract.roots(
-      await zkvoteContract.currentRootIndex()
+      await zkvoteContract.currentRootIndex(),
     );
     expect(BigInt(root)).to.equal(BigInt(expectedZero));
     expect(onChainRoot).to.equal(ethers.toBeHex(BigInt(root), 32));
@@ -202,7 +202,7 @@ describe("ZkAuth", function () {
       mimcjs,
       LEVELS,
       [commitmentBigInt],
-      commitmentBigInt
+      commitmentBigInt,
     );
 
     // Recompute root from path to validate path correctness
@@ -216,7 +216,7 @@ describe("ZkAuth", function () {
     expect(running).to.equal(BigInt(root));
 
     const onChainRoot = await zkvoteContract.roots(
-      await zkvoteContract.currentRootIndex()
+      await zkvoteContract.currentRootIndex(),
     );
     expect(onChainRoot).to.equal(ethers.toBeHex(BigInt(root), 32));
   });
@@ -235,7 +235,7 @@ describe("ZkAuth", function () {
         mimcjs,
         zkvoteContract.target,
         ethers.provider,
-        LEVELS
+        LEVELS,
       );
 
     // console.log("Commit events after multiple commits:");
@@ -249,7 +249,7 @@ describe("ZkAuth", function () {
     expect(events.length).to.equal(signers.length);
 
     const onChainRoot = await zkvoteContract.roots(
-      await zkvoteContract.currentRootIndex()
+      await zkvoteContract.currentRootIndex(),
     );
     expect(onChainRoot).to.equal(ethers.toBeHex(BigInt(root), 32));
 
@@ -281,7 +281,7 @@ describe("ZkAuth", function () {
     await zkvoteContract.connect(voter).commit(commitmentHex);
 
     const currentRoot = await zkvoteContract.roots(
-      await zkvoteContract.currentRootIndex()
+      await zkvoteContract.currentRootIndex(),
     );
     const nullifier = ethers.toBeHex(1n, 32);
     const zeros2: [bigint, bigint] = [0n, 0n];
@@ -291,7 +291,7 @@ describe("ZkAuth", function () {
     ];
 
     await expect(
-      zkvoteContract.auth(nullifier, currentRoot, zeros2, zeros22, zeros2)
+      zkvoteContract.auth(nullifier, currentRoot, zeros2, zeros22, zeros2),
     ).to.be.revertedWith("Invalid proof");
   });
 
@@ -307,7 +307,7 @@ describe("ZkAuth", function () {
       ethers.provider,
       levels,
       commitment,
-      "build/Verifier.zkey"
+      "build/Verifier.zkey",
     );
 
     const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifierHash), 32);
@@ -318,7 +318,7 @@ describe("ZkAuth", function () {
       rootHex,
       proofData.proof_a,
       proofData.proof_b,
-      proofData.proof_c
+      proofData.proof_c,
     );
   });
 
@@ -339,7 +339,7 @@ describe("ZkAuth", function () {
         ethers.provider,
         levels,
         commitment,
-        "build/Verifier.zkey"
+        "build/Verifier.zkey",
       );
       proofs.push(proofData);
     }
@@ -353,7 +353,7 @@ describe("ZkAuth", function () {
         rootHex,
         proof.proof_a,
         proof.proof_b,
-        proof.proof_c
+        proof.proof_c,
       );
       //expect(await zkvoteContract.nullifiers(nullifierHex)).to.equal(true);
     }
@@ -375,8 +375,8 @@ describe("ZkAuth", function () {
         ethers.provider,
         levels,
         wrongCommitment,
-        "build/Verifier.zkey"
-      )
+        "build/Verifier.zkey",
+      ),
     ).to.be.rejectedWith("Element not found in tree");
 
     // Correct proof with the original commitment
@@ -385,7 +385,7 @@ describe("ZkAuth", function () {
       ethers.provider,
       levels,
       commitment,
-      "build/Verifier.zkey"
+      "build/Verifier.zkey",
     );
     const nullifierHex = ethers.toBeHex(BigInt(correctProof.nullifierHash), 32);
     const rootHex = ethers.toBeHex(BigInt(correctProof.root), 32);
@@ -394,7 +394,7 @@ describe("ZkAuth", function () {
       rootHex,
       correctProof.proof_a,
       correctProof.proof_b,
-      correctProof.proof_c
+      correctProof.proof_c,
     );
     //expect(await zkvoteContract.nullifiers(nullifierHex)).to.equal(true);
   });
@@ -412,7 +412,7 @@ describe("ZkAuth", function () {
       ethers.provider,
       levels,
       commitment,
-      "build/Verifier.zkey"
+      "build/Verifier.zkey",
     );
 
     const proof2 = await calculateMerkleRootAndZKProof1(
@@ -420,7 +420,7 @@ describe("ZkAuth", function () {
       ethers.provider,
       levels,
       commitment,
-      "build/Verifier.zkey"
+      "build/Verifier.zkey",
     );
 
     expect(proof1.toString()).to.equal(proof2.toString());
@@ -431,7 +431,7 @@ describe("ZkAuth", function () {
     const commitment = await generateCommitment();
 
     const commitmentb64 = serializeCommitmentToBase64(commitment);
-    console.log("commitment base64: ", commitmentb64);
+    //console.log("commitment base64: ", commitmentb64);
     const commitment1 = deserializeCommitmentFromBase64(commitmentb64);
 
     expect(commitment.toString()).to.equal(commitment1.toString());
@@ -445,7 +445,7 @@ describe("ZkAuth", function () {
       ethers.provider,
       levels,
       commitment1,
-      "build/Verifier.zkey"
+      "build/Verifier.zkey",
     );
 
     const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifierHash), 32);
@@ -456,7 +456,7 @@ describe("ZkAuth", function () {
       rootHex,
       proofData.proof_a,
       proofData.proof_b,
-      proofData.proof_c
+      proofData.proof_c,
     );
   });
 
@@ -470,12 +470,12 @@ describe("ZkAuth", function () {
 
       const rootAndPath = await calculateMerkleRootAndPath1(
         commitments,
-        commitment.commitment
+        commitment.commitment,
       );
 
       const proofData = await calculateMerkleRootAndZKProof1c(
         rootAndPath,
-        commitment
+        commitment,
       );
       const nullifierHex = ethers.toBeHex(BigInt(proofData.nullifier), 32);
       const rootHex = ethers.toBeHex(BigInt(proofData.root), 32);
@@ -485,7 +485,7 @@ describe("ZkAuth", function () {
         rootHex,
         proofData.proof_a,
         proofData.proof_b,
-        proofData.proof_c
+        proofData.proof_c,
       );
     } catch (e) {
       console.log(e);
