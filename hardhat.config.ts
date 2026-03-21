@@ -15,14 +15,22 @@ export default defineConfig({
     profiles: {
       default: {
         version: "0.8.28",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1,
+          },
+          viaIR: true,
+        },
       },
       production: {
         version: "0.8.28",
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 1,
           },
+          viaIR: true,
         },
       },
     },
@@ -31,10 +39,12 @@ export default defineConfig({
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",
+      allowUnlimitedContractSize: true,
     },
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
+      allowUnlimitedContractSize: true,
     },
     sepolia: {
       type: "http",
