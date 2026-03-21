@@ -15,6 +15,9 @@ contract ZkVote is ZkAuth {
     mapping(address => bool) public isVoter;
     address[] public voters;
 
+    mapping(address => Candidate[]) public votedFor;
+    address[] public votedAddresses;
+
     event Vote(
         bytes32 indexed nullifier,
         uint256 indexed candidateId,
@@ -66,6 +69,11 @@ contract ZkVote is ZkAuth {
         auth(_nullifierHash, _root, _proof_a, _proof_b, _proof_c);
         candidates[_candidateId].votes += 1;
         isNullifierUsed[_nullifierHash] = true;
+
+        if (votedFor[msg.sender].length == 0) {
+            votedAddresses.push(msg.sender);
+        }
+        votedFor[msg.sender].push(candidates[_candidateId]);
         emit Vote(_nullifierHash, _candidateId, msg.sender);
     }
 
@@ -105,5 +113,15 @@ contract ZkVote is ZkAuth {
 
     function allCandidates() public view returns (Candidate[] memory) {
         return candidates;
+    }
+
+    function allVotedAddresses() public view returns (address[] memory) {
+        return votedAddresses;
+    }
+
+    function choicesOfAddress(
+        address votedAddress
+    ) public view returns (Candidate[] memory) {
+        return votedFor[votedAddress];
     }
 }
