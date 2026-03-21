@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { network } from "hardhat";
-const { ethers } = await network.connect();
+const { ethers } = await network.connect("hardhatMainnet");
 import { Contract, ContractFactory } from "ethers";
 import { mimcSpongecontract, buildMimcSponge } from "circomlibjs";
 import type { ZkAuth } from "../types/ethers-contracts/ZkAuth.js";
@@ -54,7 +54,7 @@ export function deserializeCommitmentFromBase64(base64: string): Commitment {
 }
 
 describe("performance", function () {
-  let mimcContract: Contract, zkauthContract: ZkAuth, zkVoteFactory: ZkVoteFactory, voters: string[];
+  let mimcContract: Contract, zkauthContract: ZkAuth, voters: string[];
   beforeEach(async function () {
     const deployers = await ethers.getSigners();
     voters = deployers.slice(0, 3).map((signer) => signer.address);
@@ -72,13 +72,6 @@ describe("performance", function () {
       await verifier.getAddress(),
     );
     await zkauthContract.waitForDeployment();
-
-    const zkVoteFactoryFactory = new ZkVoteFactory__factory(deployer);
-    zkVoteFactory = await zkVoteFactoryFactory.deploy(
-      await mimcContract.getAddress(),
-      await verifier.getAddress(),
-    );
-    await zkVoteFactory.waitForDeployment();
   });
 
   it("measures MiMCSponge runtime and gas", async function () {
@@ -170,6 +163,13 @@ describe("performance", function () {
 
   it("measures ZkVoteFactory.createVote runtime and gas", async function () {
     const [deployer, ...rest] = await ethers.getSigners();
+    const verifier = await ethers.deployContract("Groth16Verifier");
+    await verifier.waitForDeployment();
+    const zkVoteFactory: ZkVoteFactory = await new ZkVoteFactory__factory(
+      deployer,
+    ).deploy(await mimcContract.getAddress(), await verifier.getAddress());
+    await zkVoteFactory.waitForDeployment();
+
     const votersForVote = rest.slice(0, 3).map((s) => s.address);
     const startTime = (await ethers.provider.getBlock("latest")).timestamp + 10;
     const endTime = startTime + 1000;
@@ -179,13 +179,7 @@ describe("performance", function () {
     const start = process.hrtime.bigint();
     const tx = await zkVoteFactory
       .connect(deployer)
-      .createVote(
-        voteMeta,
-        candidateMetas,
-        votersForVote,
-        startTime,
-        endTime,
-      );
+      .createVote(voteMeta, candidateMetas, votersForVote, startTime, endTime);
     const receipt = await tx.wait();
     const end = process.hrtime.bigint();
 
@@ -193,7 +187,9 @@ describe("performance", function () {
     const gasUsed = receipt?.gasUsed ?? 0n;
 
     console.log(
-      `[performance] ZkVoteFactory.createVote duration(ms): ${durationMs.toFixed(3)}`,
+      `[performance] ZkVoteFactory.createVote duration(ms): ${durationMs.toFixed(
+        3,
+      )}`,
     );
     console.log(
       `[performance] ZkVoteFactory.createVote gasUsed: ${gasUsed.toString()}`,

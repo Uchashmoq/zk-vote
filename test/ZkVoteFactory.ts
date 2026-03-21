@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { network } from "hardhat";
-const { ethers } = await network.connect();
+const { ethers } = await network.connect("hardhatMainnet");
 import { ContractFactory } from "ethers";
 import { mimcSpongecontract } from "circomlibjs";
 import { ZkVoteFactory__factory } from "../types/ethers-contracts/factories/ZkVoteFactory__factory.js";
@@ -32,7 +32,7 @@ describe("ZkVoteFactory", function () {
 
     factoryContract = await new ZkVoteFactory__factory(deployer).deploy(
       await mimcContract.getAddress(),
-      await verifierContract.getAddress()
+      await verifierContract.getAddress(),
     );
     await factoryContract.waitForDeployment();
   });
@@ -95,7 +95,7 @@ describe("ZkVoteFactory", function () {
     const commitment = ethers.toBeHex(1n, 32);
 
     await expect(vote.commit(commitment)).to.be.revertedWith(
-      "You are not voter"
+      "You are not voter",
     );
   });
 
@@ -123,7 +123,7 @@ describe("ZkVoteFactory", function () {
       ethers.provider,
       levels,
       commitment,
-      "build/Verifier.zkey"
+      "build/Verifier.zkey",
     );
 
     const nullifierHex = ethers.toBeHex(BigInt(proof.nullifierHash), 32);
@@ -137,7 +137,7 @@ describe("ZkVoteFactory", function () {
         rootHex,
         proof.proof_a,
         proof.proof_b,
-        proof.proof_c
+        proof.proof_c,
       );
     expect((await vote.candidates(0)).votes).to.equal(1n);
 
@@ -150,8 +150,8 @@ describe("ZkVoteFactory", function () {
           rootHex,
           proof.proof_a,
           proof.proof_b,
-          proof.proof_c
-        )
+          proof.proof_c,
+        ),
     ).to.be.revertedWith("You have voted");
     expect((await vote.candidates(0)).votes).to.equal(1n);
   });
