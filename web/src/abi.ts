@@ -393,7 +393,20 @@ export const zkVoteAbi = [
   },
   {
     inputs: [],
-    name: "allVotes",
+    name: "allVotedAddresses",
+    outputs: [
+      {
+        internalType: "address[]",
+        name: "",
+        type: "address[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "allVoters",
     outputs: [
       {
         internalType: "address[]",
@@ -511,6 +524,37 @@ export const zkVoteAbi = [
   {
     inputs: [
       {
+        internalType: "address",
+        name: "votedAddress",
+        type: "address",
+      },
+    ],
+    name: "choicesOfAddress",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "votes",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "meta",
+            type: "string",
+          },
+        ],
+        internalType: "struct ZkVote.Candidate[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "bytes32",
         name: "_commitment",
         type: "bytes32",
@@ -548,6 +592,19 @@ export const zkVoteAbi = [
         internalType: "bytes32",
         name: "",
         type: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "committedVoters",
+    outputs: [
+      {
+        internalType: "address[]",
+        name: "",
+        type: "address[]",
       },
     ],
     stateMutability: "view",
@@ -850,6 +907,54 @@ export const zkVoteAbi = [
     name: "vote",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "votedAddresses",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "votedFor",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "votes",
+        type: "uint256",
+      },
+      {
+        internalType: "string",
+        name: "meta",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
     type: "function",
   },
   {
