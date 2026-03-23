@@ -1,2 +1,2 @@
 export const zkVoteFactoryAddress =
-  "0xc8BaA8CF3a3f364f50870648cEbe9B356a46b9aD";
+  "0x6aE3Ab446EFF92A1F9e2828CA08cE6ca6879268B";

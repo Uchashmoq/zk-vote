@@ -23,14 +23,14 @@ const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL);
 const zkVoteFactory = new ethers.Contract(
   zkVoteFactoryAddress,
   zkVoteFactoryAbi,
-  provider
+  provider,
 );
 const creatorAddress = ethers.getAddress(
-  new ethers.Wallet(PRIVATE_KEY).address
+  new ethers.Wallet(PRIVATE_KEY).address,
 );
 
 export async function loginAction(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ error: string } | undefined> {
   try {
     await signIn("credentials", {
@@ -48,7 +48,7 @@ export async function loginAction(
 }
 
 export async function deleteVoterAction(
-  id: Voter["id"]
+  id: Voter["id"],
 ): Promise<{ error: string } | undefined> {
   if (typeof id !== "number" || Number.isNaN(id)) {
     return { error: "invalid voter id" };
@@ -66,7 +66,7 @@ export async function deleteVoterAction(
 }
 
 export async function createVoterAction(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ error: string } | Voter> {
   const name = formData.get("name");
   const address = formData.get("address");
@@ -119,7 +119,7 @@ export async function getVoters() {
 }
 
 export async function uploadImageAction(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ cid: string; url: string } | { error: string }> {
   try {
     const file: File | null = formData.get("file") as unknown as File;
@@ -136,7 +136,7 @@ export async function queryVotes(
   committedVoter: string | undefined,
   verified: boolean,
   hideNotStarted: boolean,
-  hideEnded: boolean
+  hideEnded: boolean,
 ): Promise<{ voteAddr: string; voteMeta: string }[]> {
   const creator = verified ? creatorAddress : ethers.ZeroAddress;
   const voter =
@@ -153,12 +153,12 @@ export async function queryVotes(
 }
 
 export async function getVoteTime(
-  address: string
+  address: string,
 ): Promise<{ startTime: BigInt; endTime: BigInt }> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
-    provider
+    provider,
   );
   const [startTime, endTime] = await Promise.all([
     voteContract.startTime(),
@@ -169,12 +169,12 @@ export async function getVoteTime(
 }
 
 async function getAllCandidates0(
-  address: string
+  address: string,
 ): Promise<{ index: number; votes: number; meta: string }[]> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
-    provider
+    provider,
   );
   const candidates: { votes: bigint; meta: string }[] =
     await voteContract.allCandidates();
@@ -201,17 +201,56 @@ export async function getAllVoters(address: string): Promise<string[]> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
-    provider
+    provider,
   );
-  const voters: string[] = await voteContract.allVotes();
+  const voters: string[] = await voteContract.allVoters();
   return voters.map((voter) => ethers.getAddress(voter));
+}
+
+export async function getCommittedVoters(address: string): Promise<string[]> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider,
+  );
+  const voters: string[] = await voteContract.committedVoters();
+  return voters.map((voter) => ethers.getAddress(voter));
+}
+
+export async function getAllVotedAddresses(address: string): Promise<string[]> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider,
+  );
+  const votedAddresses: string[] = await voteContract.allVotedAddresses();
+  return votedAddresses.map((voter) => ethers.getAddress(voter));
+}
+
+export async function getChoicesOfAddress(
+  address: string,
+  votedAddress: string,
+): Promise<Candidate[]> {
+  const voteContract = new ethers.Contract(
+    ethers.getAddress(address),
+    zkVoteAbi,
+    provider,
+  );
+  const choices: { votes: bigint; meta: string }[] =
+    await voteContract.choicesOfAddress(ethers.getAddress(votedAddress));
+
+  return choices.map((choice, i) => ({
+    votes: Number(choice.votes),
+    index: i,
+    meta: stringToCandidateMeta(choice.meta),
+  }));
 }
 
 export async function getVoteMeta(address: string): Promise<VoteMeta> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
-    provider
+    provider,
   );
   const metaStr: string = await voteContract.meta();
   return stringToVoteMeta(metaStr);
@@ -233,15 +272,15 @@ export async function getVoteFullInfo(address: string): Promise<Vote> {
 
 export async function isCommittedAction(
   address: string,
-  userAddress: string
+  userAddress: string,
 ): Promise<boolean> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
-    provider
+    provider,
   );
   const isCommitted = await voteContract.isCommitted(
-    ethers.getAddress(userAddress)
+    ethers.getAddress(userAddress),
   );
   return isCommitted;
 }
@@ -250,7 +289,7 @@ export async function getAllCommitments(address: string): Promise<string[]> {
   const voteContract = new ethers.Contract(
     ethers.getAddress(address),
     zkVoteAbi,
-    provider
+    provider,
   );
   const allCommitments = await voteContract.allCommitments();
   return allCommitments;

@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { use, useEffect, useMemo, useState, useTransition } from 'react'
 import ProgressRing from '@/components/ProgressRing'
 import CandidateCard from '@/components/CandidateCard'
-import { getVoteFullInfo, isCommittedAction } from '@/actions'
+import { getAllVotedAddresses, getAllVoters, getCommittedVoters, getVoteFullInfo, isCommittedAction } from '@/actions'
 import { Vote } from '@/types'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { notFound } from 'next/navigation'
@@ -12,7 +12,7 @@ import { ethers } from 'ethers'
 import { zkVoteAbi } from '@/abi'
 import { getAddress } from 'viem'
 import toast, { Toaster } from 'react-hot-toast'
-import { Download } from 'lucide-react'
+import { Check, Download } from 'lucide-react'
 
 
 function shortenAddress(addr?: string) {
@@ -28,11 +28,20 @@ export default function VotePage({
 }) {
   const { address } = use(params)
   const [vote, setVote] = useState<Vote>()
+  const [voters, setVoters] = useState<string[]>()
+  const [committedVoters, setCommittedVoters] = useState<string[]>()
+  const [votedAddress, setVotedAddress] = useState<string[]>()
   useEffect(() => {
     getVoteFullInfo(address).then(setVote).catch(() => {
       notFound()
     })
+
+    getAllVoters(address).then(setVoters)
+    getCommittedVoters(address).then(setCommittedVoters)
+    getAllVotedAddresses(address).then(setVotedAddress);
   }, [address])
+
+
 
   const [showFullDesc, setShowFullDesc] = useState(false)
   const [progressPercent, setProgressPercent] = useState(0)
@@ -69,6 +78,10 @@ export default function VotePage({
     () => sorted.reduce((sum, c) => sum + c.votes, 0),
     [sorted]
   )
+  const committedVoterSet = useMemo(
+    () => new Set((committedVoters ?? []).map((v) => v.toLowerCase())),
+    [committedVoters]
+  )
 
   const [isCommitted, setIscommitted] = useState<boolean>()
   useEffect(() => {
@@ -83,6 +96,7 @@ export default function VotePage({
   const [, startTransition] = useTransition();
   const [buttonLoading, setButtonLoading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false)
+  const [activeSection, setActiveSection] = useState<'vote' | 'comments' | 'voters'>('vote')
 
 
   useEffect(() => {
@@ -97,11 +111,18 @@ export default function VotePage({
     if (isSuccess) {
       downloadSecretAndNullifier()
       toast.success("Transaction success")
+      if (userAddress) {
+        setCommittedVoters((prev) => {
+          const next = prev ?? []
+          const exists = next.some((v) => v.toLowerCase() === userAddress.toLowerCase())
+          return exists ? next : [...next, userAddress]
+        })
+      }
     } else if (isError) {
       toast.error("Transaction failed")
     }
     setButtonLoading(false)
-  }, [isSuccess, isError])
+  }, [isSuccess, isError, userAddress])
 
   function downloadSecretAndNullifier() {
     const blob = new Blob([commitmentb64], { type: "text/plain" });
@@ -225,18 +246,102 @@ export default function VotePage({
         </header>
 
         <section className="space-y-4">
-          <div className="text-sm uppercase tracking-[0.18em] text-slate-500">Candidates</div>
-          <div className="grid gap-4">
-            {sorted.map((candidate) => (
-              <CandidateCard
-                key={candidate.meta.orginal}
-                candidate={candidate}
-                totalVotes={totalVotes}
-                vote={vote}
-                address={address}
-              />
-            ))}
+          <div className="flex w-full items-center gap-2 rounded-xl justify-end-safe">
+            {[
+              { key: 'vote', label: 'Vote' },
+              { key: 'comments', label: 'Comments' },
+              { key: 'voters', label: 'Voters' },
+            ].map((section) => {
+              const isActive = activeSection === section.key
+              return (
+                <button
+                  key={section.key}
+                  type="button"
+                  onClick={() => setActiveSection(section.key as 'vote' | 'comments' | 'voters')}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${isActive
+                    ? 'bg-cyan-400/20 text-cyan-200'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                >
+                  {section.label}
+                </button>
+              )
+            })}
           </div>
+          {activeSection === 'vote' && (
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                {sorted.map((candidate) => (
+                  <CandidateCard
+                    key={candidate.meta.orginal}
+                    candidate={candidate}
+                    totalVotes={totalVotes}
+                    vote={vote}
+                    address={address}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          {activeSection === 'comments' && (
+            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-4 text-sm text-slate-300">
+              评论区占位内容
+            </div>
+          )}
+          {activeSection === 'voters' && (
+            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-4 text-sm text-slate-300">
+              <div className="mb-3 grid gap-4 md:grid-cols-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Committed ({committedVoterSet.size})
+                </p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Voted ({votedAddress?.length ?? 0})
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  {voters && voters.length > 0 ? (
+                    <div className="space-y-2">
+                      {voters.map((voter) => {
+                        const isCommittedVoter = committedVoterSet.has(voter.toLowerCase())
+                        return (
+                          <div
+                            key={voter}
+                            className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
+                          >
+                            <span className="truncate font-mono text-xs sm:text-sm">{voter}</span>
+                            {isCommittedVoter && (
+                              <span className="ml-3 shrink-0 rounded-full bg-emerald-400/20 px-2 py-0.5 text-xs font-semibold text-emerald-200">
+                                <Check />
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-slate-400">No voted address</p>
+                  )}
+                </div>
+                <div>
+                  {votedAddress && votedAddress.length > 0 ? (
+                    <div className="space-y-2">
+                      {votedAddress.map((voted) => (
+                        <div
+                          key={voted}
+                          className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
+                        >
+                          <span className="truncate font-mono text-xs sm:text-sm">{voted}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-400">No voted address</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {isSuccess && commitmentb64 && (
@@ -248,7 +353,7 @@ export default function VotePage({
             <Download className="h-4 w-4" />
           </button>
         )}
-        {!isAfterEnd && (
+        {!isAfterEnd && activeSection == 'vote' && (
           <button
             type="button"
             disabled={isCommitDisabled || buttonLoading || isSuccess}
