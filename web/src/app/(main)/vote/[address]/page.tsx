@@ -3,22 +3,26 @@ import Image from 'next/image'
 import { use, useEffect, useMemo, useState, useTransition } from 'react'
 import ProgressRing from '@/components/ProgressRing'
 import CandidateCard from '@/components/CandidateCard'
-import { getAllVotedAddresses, getAllVoters, getCommittedVoters, getVoteFullInfo, isCommittedAction } from '@/actions'
-import { Vote } from '@/types'
+import { getAllVotedAddresses, getAllVoters, getComments, getCommittedVoters, getVoteFullInfo, isCommittedAction } from '@/actions'
+import { Comment, Vote } from '@/types'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { notFound } from 'next/navigation'
-import { Commitment, generateCommitment, serializeSecretAndNullifierToBase64 } from '@/lib/zk-auth-client'
+import { generateCommitment, serializeSecretAndNullifierToBase64 } from '@/lib/zk-auth-client'
 import { ethers } from 'ethers'
-import { zkVoteAbi } from '@/abi'
+import { commentManagerAbi, zkVoteAbi } from '@/abi'
+import { commentManagerAddress } from '@/address'
 import { getAddress } from 'viem'
 import toast, { Toaster } from 'react-hot-toast'
-import { Check, Download } from 'lucide-react'
+import { Check, Download, Send } from 'lucide-react'
+import { CommentCard } from '@/components/CommentCard'
 
 
 function shortenAddress(addr?: string) {
   if (!addr) return '';
   return `${addr.slice(0, 6)}..${addr.slice(-4)}`;
 }
+
+
 
 
 export default function VotePage({
@@ -92,11 +96,28 @@ export default function VotePage({
 
   const { writeContractAsync, data: hash, error } = useWriteContract()
   const { isSuccess, isError } = useWaitForTransactionReceipt({ hash })
+  const {
+    writeContractAsync: writeCommentAsync,
+    data: commentHash,
+    error: commentError
+  } = useWriteContract()
+  const {
+    isSuccess: isCommentSuccess,
+    isError: isCommentError
+  } = useWaitForTransactionReceipt({ hash: commentHash })
   const [commitmentb64, setCommitmentb64] = useState<string>("")
   const [, startTransition] = useTransition();
   const [buttonLoading, setButtonLoading] = useState(false);
+  const [commentButtonLoading, setCommentButtonLoading] = useState(false)
   const [showImagePreview, setShowImagePreview] = useState(false)
   const [activeSection, setActiveSection] = useState<'vote' | 'comments' | 'voters'>('vote')
+  const [commentInput, setCommentInput] = useState('')
+  const [comments, setComments] = useState<Comment[]>([])
+
+  useEffect(() => {
+
+    getComments(address).then(setComments).catch(() => setComments([]))
+  }, [address])
 
 
   useEffect(() => {
@@ -123,6 +144,24 @@ export default function VotePage({
     }
     setButtonLoading(false)
   }, [isSuccess, isError, userAddress])
+
+  useEffect(() => {
+    if (commentError) {
+      const userFriendlyMessage = (commentError as { shortMessage?: string })?.shortMessage || "Something went wrong while commenting. Please try again."
+      toast.error(userFriendlyMessage)
+    }
+  }, [commentError])
+
+  useEffect(() => {
+    if (isCommentSuccess) {
+      setCommentInput('')
+      getComments(address).then(setComments).catch(() => setComments([]))
+      toast.success("Comment sent")
+    } else if (isCommentError) {
+      toast.error("Failed to send comment")
+    }
+    setCommentButtonLoading(false)
+  }, [address, isCommentSuccess, isCommentError])
 
   function downloadSecretAndNullifier() {
     const blob = new Blob([commitmentb64], { type: "text/plain" });
@@ -153,6 +192,18 @@ export default function VotePage({
         }).catch(() => setButtonLoading(false))
       }
     );
+  }
+
+  async function onSendComment() {
+    const content = commentInput.trim()
+    if (status !== 'connected' || !userAddress || !content) return
+    setCommentButtonLoading(true)
+    writeCommentAsync({
+      address: getAddress(commentManagerAddress),
+      abi: commentManagerAbi,
+      functionName: 'addComment',
+      args: [getAddress(address), content],
+    }).catch(() => setCommentButtonLoading(false))
   }
 
 
@@ -195,6 +246,7 @@ export default function VotePage({
               ? 'You have already committed'
               : undefined
   const isCommitDisabled = Boolean(commitTooltip)
+  const isCommentDisabled = status !== 'connected' || !userAddress || commentButtonLoading || commentInput.trim().length === 0
   const modalActive = showImagePreview
 
   return (
@@ -224,7 +276,18 @@ export default function VotePage({
                 <h1 className="truncate text-xl font-semibold leading-tight text-slate-50 sm:text-2xl">
                   {voteTitle}
                 </h1>
-                <p className="truncate text-xs text-slate-300">Contract: {address}</p>
+                <p className="truncate text-xs text-slate-300">
+                  Contract:{' '}
+                  <a
+                    href={`https://sepolia.etherscan.io/address/${address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View on blockcain browser"
+                    className=" decoration-slate-500 underline-offset-2 hover:text-cyan-300"
+                  >
+                    {address}
+                  </a>
+                </p>
                 <p className="text-xs text-slate-400">{dateRange}</p>
               </div>
             </div>
@@ -284,13 +347,18 @@ export default function VotePage({
             </div>
           )}
           {activeSection === 'comments' && (
-            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-4 text-sm text-slate-300">
-              评论区占位内容
+            <div className="rounded-xl  p-4 pb-24 text-sm text-slate-300">
+              <div className="space-y-3">
+                {comments.length > 0 ? comments.map((comment, index) => (
+                  <CommentCard key={`${comment.sender}-${index}`} voteAddress={address} comment={comment} />
+                )) : <p className="text-slate-400">No comments yet</p>}
+              </div>
             </div>
           )}
           {activeSection === 'voters' && (
             <div className="rounded-xl border border-white/10 bg-slate-900/40 p-4 text-sm text-slate-300">
-              <div className="mb-3 grid gap-4 md:grid-cols-2">
+              {/* todo改成表格样子显示Committed、votedAddress（显示内容不变） */}
+              <div className="mb-3 grid gap-4 grid-cols-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Committed ({committedVoterSet.size})
                 </p>
@@ -298,7 +366,7 @@ export default function VotePage({
                   Voted ({votedAddress?.length ?? 0})
                 </p>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 grid-cols-2">
                 <div>
                   {voters && voters.length > 0 ? (
                     <div className="space-y-2">
@@ -309,10 +377,19 @@ export default function VotePage({
                             key={voter}
                             className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
                           >
-                            <span className="truncate font-mono text-xs sm:text-sm">{voter}</span>
+                            <a
+                              href={`https://sepolia.etherscan.io/address/${voter}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View on blockchain browser"
+                              className="truncate font-mono text-xs text-cyan-300 hover:text-cyan-200 hover:underline sm:text-sm"
+                            >
+                              <span className="sm:hidden">{shortenAddress(voter)}</span>
+                              <span className="hidden sm:inline">{voter}</span>
+                            </a>
                             {isCommittedVoter && (
-                              <span className="ml-3 shrink-0 rounded-full bg-emerald-400/20 px-2 py-0.5 text-xs font-semibold text-emerald-200">
-                                <Check />
+                              <span className="shrink-0 rounded-full bg-emerald-400/20 p-1 text-emerald-200">
+                                <Check className="h-3 w-3" />
                               </span>
                             )}
                           </div>
@@ -331,7 +408,16 @@ export default function VotePage({
                           key={voted}
                           className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
                         >
-                          <span className="truncate font-mono text-xs sm:text-sm">{voted}</span>
+                          <a
+                            href={`https://sepolia.etherscan.io/address/${voted}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View on blockchain browser"
+                            className="truncate font-mono text-xs text-cyan-300 hover:text-cyan-200 hover:underline sm:text-sm"
+                          >
+                            <span className="sm:hidden">{shortenAddress(voted)}</span>
+                            <span className="hidden sm:inline">{voted}</span>
+                          </a>
                         </div>
                       ))}
                     </div>
@@ -343,6 +429,35 @@ export default function VotePage({
             </div>
           )}
         </section>
+
+        {activeSection === 'comments' && (
+          <div className="fixed inset-x-0 bottom-8 mx-auto w-full max-w-3xl px-4">
+            <div className="flex items-center gap-2 rounded-xl  bg-slate-900/95 p-2 shadow-lg backdrop-blur">
+              <input
+                type="text"
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                placeholder="Say something..."
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400/60"
+              />
+              <button
+                type="button"
+                disabled={isCommentDisabled}
+                onClick={onSendComment}
+                className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition ${isCommentDisabled
+                  ? 'cursor-not-allowed bg-slate-600 text-slate-300'
+                  : 'bg-cyan-400/80 text-slate-900 hover:bg-cyan-300'
+                  }`}
+              >
+                {commentButtonLoading ? (
+                  <span className="loading loading-dots loading-sm"></span>
+                ) : (
+                  <Send />
+                )}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isSuccess && commitmentb64 && (
           <button

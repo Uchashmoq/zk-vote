@@ -6,11 +6,12 @@ import prisma from "@/lib/prisma";
 import { Voter } from "../prisma/src/lib/prisma/client";
 import { isAddress } from "viem";
 import { pinata } from "./pinata";
-import { zkVoteFactoryAddress } from "./address";
+import { commentManagerAddress, zkVoteFactoryAddress } from "./address";
 import { ethers } from "ethers";
-import { zkVoteAbi, zkVoteFactoryAbi } from "./abi";
+import { commentManagerAbi, zkVoteAbi, zkVoteFactoryAbi } from "./abi";
 import {
   Candidate,
+  Comment,
   stringToCandidateMeta,
   stringToVoteMeta,
   Vote,
@@ -293,4 +294,18 @@ export async function getAllCommitments(address: string): Promise<string[]> {
   );
   const allCommitments = await voteContract.allCommitments();
   return allCommitments;
+}
+
+export async function getComments(target: string): Promise<Comment[]> {
+  const commentManager = new ethers.Contract(
+    commentManagerAddress,
+    commentManagerAbi,
+    provider,
+  );
+  const comments: { sender: string; content: string }[] =
+    await commentManager.getComments(ethers.getAddress(target));
+  return comments.map((comment) => ({
+    sender: ethers.getAddress(comment.sender),
+    content: comment.content,
+  }));
 }

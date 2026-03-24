@@ -27,6 +27,11 @@ export interface Vote {
   voters: string[];
 }
 
+export interface Comment {
+  sender: string;
+  content: string;
+}
+
 export function stringToCandidateMeta(meta: string): CandidateMeta {
   const fallbackMeta: CandidateMeta = {
     name: "???",
